@@ -5,9 +5,13 @@
 !                                 / _, _/ /___/ /_/ / /___ /   |
 !                                /_/ |_/_____/\____/_____//_/|_|
 !
-! (C) Federico Perini, 2022- A Fortran port of the mini-regex library.
-!     Code inspired to tiny-regex-c from
-!     Mini regex-module inspired by Rob Pike's regex code described in:
+! MIT License
+!
+! (C) Federico Perini, 2022
+!     A Fortran port of the tiny-regex library.
+!
+!     https://github.com/kokke/tiny-regex-c
+!     Code inspired by Rob Pike's regex code described in:
 !     http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 !
 ! *************************************************************************************************
@@ -30,8 +34,8 @@ module regex
     ! Supported patterns
     integer, parameter :: UNUSED         = 0
     integer, parameter :: DOT            = 1   ! '.'        Dot, matches any character
-    integer, parameter :: ATBEGIN        = 2   ! '^'        Start anchor, matches beginning of string
-    integer, parameter :: ATEND          = 3   ! '$'        End anchor, matches end of string
+    integer, parameter :: BEGIN_WITH     = 2   ! '^'        Start anchor, matches beginning of string
+    integer, parameter :: END_WITH       = 3   ! '$'        End anchor, matches end of string
     integer, parameter :: QUESTIONMARK   = 4   ! '?'        Question, match zero or one (non-greedy)
     integer, parameter :: STAR           = 5   ! '*'        Asterisk, match zero or more (greedy)
     integer, parameter :: PLUS           = 6   ! '+'        Plus, match one or more (greedy)
@@ -61,18 +65,25 @@ module regex
     character(kind=RCK), parameter :: BACKSPCE   = achar(8,kind=RCK)  ! \b or backspace character
 
 
-
     ! Regex pattern element
     type, public :: regex_pattern
-        integer :: type ! CHAR, star, ...
-        character(kind=RCK,len=MAX_CHAR_CLASS_LEN) :: ccl ! Characters in class
+
+        integer :: type = UNUSED
+
+        ! Single or multi-character pattern
+        character(kind=RCK,len=MAX_CHAR_CLASS_LEN) :: ccl = repeat(' ',MAX_CHAR_CLASS_LEN)
         contains
 
           procedure :: print => print_pattern
+          procedure :: destroy => pat_destroy
+          procedure :: match => pat_match
 
     end type regex_pattern
 
     type, public :: regex_op
+
+        integer :: n = 0
+
         type(regex_pattern), dimension(MAX_REGEXP_OBJECTS) :: pattern
 
         contains
@@ -85,30 +96,14 @@ module regex
 
     end type regex_op
 
-
-
-! *
-! *
-! * Supports:
-! * ---------
-
-! *
-! *
-! */
-
-
-!/* Compile regex string pattern to a regex_pattern-array. */
-!re_t re_compile(const char* pattern);
-!
-!
-!/* Find matches of the compiled pattern inside text. */
-!int re_matchp(re_t pattern, const char* text, int* matchlength);
-!
-!
-!/* Find matches of the txt pattern inside text (will compile automatically first). */
-!int re_match(const char* pattern, const char* text, int* matchlength);
-
     contains
+
+    ! Clean up a pattern
+    elemental subroutine pat_destroy(this)
+       class(regex_pattern), intent(inout) :: this
+       this%type = UNUSED
+       this%ccl  = repeat(' ',MAX_CHAR_CLASS_LEN)
+    end subroutine pat_destroy
 
     ! Number of rules in the current pattern
     elemental integer function nrules(this)
@@ -151,10 +146,10 @@ module regex
         end do
     end subroutine finalize
 
+    ! Check that a character matches a dot ("any character") pattern
     elemental logical function matchdot(c)
        character(kind=RCK), intent(in) :: c
        if (RE_DOT_MATCHES_NEWLINE) then
-          !  (void)c;
           matchdot = .true.
        else
           matchdot = c/=NEWLINE .and. c/=BACKSPCE
@@ -207,22 +202,21 @@ module regex
        character(kind=RCK,len=*), intent(in) :: str
 
        matchrange = len(str)>=3 .and. &
-                    c        /= DASH &
-                    .and. str(1:1) /= BACKSLASH0 &
+                    c /= DASH &
                     .and. str(1:1) /= DASH &
                     .and. str(2:2) == DASH &
-                    .and. str(3:3) /= BACKSLASH0 &
-                    .and. c>=str(1:1) .and. c<=str(3:3) ! wtf?
+                    .and. ichar(c)>=ichar(str(1:1)) &
+                    .and. ichar(c)<=ichar(str(3:3))    ! Range (number/letters) is in increasing order
 
     end function matchrange
 
-    elemental logical function ischarclass(c,str)
+    elemental logical function matchcharclass(c,str)
        character(kind=RCK), intent(in) :: c
        character(kind=RCK,len=*), intent(in) :: str
 
        integer :: i
 
-       ischarclass = .false.
+       matchcharclass = .false.
        i = 0
 
        loop: do
@@ -230,24 +224,24 @@ module regex
           i = i+1
 
           if (matchrange(c,str(i:))) then
-             ischarclass = .true.
+             matchcharclass = .true.
              return
           elseif (str(i:i+1) == BACKSLASH0) then
              ! Escape-char: increment str-ptr and match on next char
              i = i+1
 
              if (matchmetachar(c,str(i:))) then
-                ischarclass = .true.
+                matchcharclass = .true.
                 return
              elseif (c==str(i:i) .and. .not.ismetachar(c)) then
-                ischarclass = .true.
+                matchcharclass = .true.
                 return
              end if
           elseif (c==str(i:i)) then
              if (c==DASH) then
-                ischarclass = str(i-1:i-1)==BACKSLASH0 .or. str(i+1:i+1)==BACKSLASH0
+                matchcharclass = str(i-1:i-1)==BACKSLASH0 .or. str(i+1:i+1)==BACKSLASH0
              else
-                ischarclass = .true.
+                matchcharclass = .true.
              end if
              return
           end if
@@ -256,7 +250,7 @@ module regex
 
        end do loop
 
-    end function ischarclass
+    end function matchcharclass
 
     ! Find matches of the given pattern in the string
     integer function re_match(pattern, text, length)
@@ -275,7 +269,7 @@ module regex
 
        ! Local variables
        character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: ccl_buf ! size of buffer for chars in all char-classes in the expression. */
-       integer :: ccl_bufidx,buf_begin,i,j,lenp
+       integer :: loc,i,j,lenp
        character(kind=RCK) :: c
 
        ! Initialize class
@@ -285,10 +279,10 @@ module regex
 
        i = 1 ! index in pattern
        j = 1 ! index in re-compiled
-       ccl_bufidx = 1
        lenp = len_trim(pattern)
 
-       do while (i<=lenp)
+       ! Move along the pattern string
+       to_the_moon: do while (i<=lenp)
 
          c = pattern(i:i)
          if (DEBUG) print *, "[regex] at location ",i,': <',c,'>'
@@ -296,8 +290,8 @@ module regex
          select case (c)
 
             ! Meta-characters are single-character patterns
-            case ('^'); this%pattern(j) = regex_pattern(ATBEGIN,c)
-            case ('$'); this%pattern(j) = regex_pattern(ATEND,c)
+            case ('^'); this%pattern(j) = regex_pattern(BEGIN_WITH,c)
+            case ('$'); this%pattern(j) = regex_pattern(END_WITH,c)
             case ('.'); this%pattern(j) = regex_pattern(DOT,c)
             case ('*'); this%pattern(j) = regex_pattern(STAR,c)
             case ('+'); this%pattern(j) = regex_pattern(PLUS,c)
@@ -350,22 +344,20 @@ module regex
                     this%pattern(j)%type = AT_CHAR_CLASS
                 end if
 
-                buf_begin = ccl_bufidx ! Remember where the char-buffer starts
-
                 ! Copy characters inside [..] to buffer */
-                ccl_bufidx = index(pattern(i+1:),']')
+                loc = index(pattern(i+1:),']')
 
-                if (ccl_bufidx>0) then
-                    ccl_buf = pattern(i+1:i+ccl_bufidx-1)
-                    i = i+ccl_bufidx+1
+                if (loc>0) then
+                    ccl_buf = pattern(i+1:i+loc-1)
+                    i = i+loc+1
                 else
                     stop 'incomplete [] pattern'
                 end if
 
                 ! the only escaped character between brackets is \\
                 ! if present, replace double backslash with a single one
-                ccl_bufidx = index(ccl_buf,'\\')
-                if (ccl_bufidx>0) ccl_buf = ccl_buf(:ccl_bufidx)//ccl_buf(ccl_bufidx+2:)
+                loc = index(ccl_buf,'\\')
+                if (loc>0) ccl_buf = ccl_buf(:loc)//ccl_buf(loc+2:)
 
                 ! Terminate string
                 this%pattern(j)%ccl = trim(ccl_buf)
@@ -384,10 +376,10 @@ module regex
          j = j+1
          if (j>MAX_REGEXP_OBJECTS) stop 'max regexp reached!'
 
-       end do
+       end do to_the_moon
 
-       ! Flag all unused patterns
-       this%pattern(j:MAX_REGEXP_OBJECTS)%type = UNUSED
+       ! Save number of patterns
+       this%n = j-1
 
     end subroutine parse_pattern
 
@@ -408,87 +400,68 @@ module regex
 
     end function print_pattern
 
+    ! Match a single pattern at the g
+    elemental logical function pat_match(p, c) result(match)
+       class(regex_pattern), intent(in) :: p
+       character(kind=RCK), intent(in) :: c
 
-!}
-!
-!void re_print(regex_pattern* pattern)
-!{
+       select case (p%type)
+          case (DOT);            match = matchdot(c)
+          case (AT_CHAR_CLASS);  match = matchcharclass(c,p%ccl)
+          case (INV_CHAR_CLASS); match = .not.matchcharclass(c,p%ccl)
+          case (DIGIT);          match = isdigit(c)
+          case (NOT_DIGIT);      match = .not.isdigit(c)
+          case (ALPHA);          match = isalphanum(c)
+          case (NOT_ALPHA);      match = .not.isalphanum(c)
+          case (WHITESPACE);     match = isspace(c)
+          case (NOT_WHITESPACE); match = .not.isspace(c)
+          case default;          match = c==p%ccl(1:1)
+       end select
 
-!
-!  int i;
-!  int j;
-!  char c;
-!  for (i = 0; i < MAX_REGEXP_OBJECTS; ++i)
-!  {
-!    if (pattern[i].type == UNUSED)
-!    {
-!      break;
-!    }
-!
-
-!  }
-!}
-!
-!
-!
+    end function pat_match
 
 
-!
-!int re_matchp(re_t pattern, const char* text, int* matchlength)
-!{
-!  *matchlength = 0;
-!  if (pattern != 0)
-!  {
-!    if (pattern[0].type == BEGIN)
-!    {
-!      return ((matchpattern(&pattern[1], text, matchlength)) ? 0 : -1);
-!    }
-!    else
-!    {
-!      int idx = -1;
-!
-!      do
-!      {
-!        idx += 1;
-!
-!        if (matchpattern(pattern, text, matchlength))
-!        {
-!          if (text[0] == '\0')
-!            return -1;
-!
-!          return idx;
-!        }
-!      }
-!      while (*text++ != '\0');
-!    }
-!  }
-!  return -1;
-!}
-!
+    integer function re_matchp(pattern, text, matchlength) result(index)
+       type(regex_op) :: pattern
+       character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(out) :: matchlength
 
-!
-!static int matchone(regex_pattern p, char c)
-!{
-!  switch (p.type)
-!  {
-!    case DOT:            return matchdot(c);
-!    case CHAR_CLASS:     return  matchcharclass(c, (const char*)p.u.ccl);
-!    case INV_CHAR_CLASS: return !matchcharclass(c, (const char*)p.u.ccl);
-!    case DIGIT:          return  isdigit(c);
-!    case NOT_DIGIT:      return !isdigit(c);
-!    case ALPHA:          return  isalphanum(c);
-!    case NOT_ALPHA:      return !isalphanum(c);
-!    case WHITESPACE:     return  isspacce(c);
-!    case NOT_WHITESPACE: return !isspacce(c);
-!    default:             return  (p.u.ch == c);
-!  }
-!}
+       matchlength = 0
+
+       if (pattern%n>0) then
+
+          if (pattern%pattern(1)%type == BEGIN_WITH) then
+
+             ! String must begin with this pattern
+             index = merge(1,0,matchpattern([pattern%pattern(2)], text, matchlength))
+
+          else
+
+             do index=1,len(text)
+                if (matchpattern(pattern%pattern,text,matchlength)) return
+             end do
+
+             index = 0
+
+          end if
+
+       else
+
+          index = 0
+
+       end if
+
+
+    end function re_matchp
+
+
+
 !
 !static int matchstar(regex_pattern p, regex_pattern* pattern, const char* text, int* matchlength)
 !{
 !  int prelen = *matchlength;
 !  const char* prepoint = text;
-!  while ((text[0] != '\0') && matchone(p, *text))
+!  while ((text[0] != '\0') && pat_match(p, *text))
 !  {
 !    text++;
 !    (*matchlength)++;
@@ -507,7 +480,7 @@ module regex
 !static int matchplus(regex_pattern p, regex_pattern* pattern, const char* text, int* matchlength)
 !{
 !  const char* prepoint = text;
-!  while ((text[0] != '\0') && matchone(p, *text))
+!  while ((text[0] != '\0') && pat_match(p, *text))
 !  {
 !    text++;
 !    (*matchlength)++;
@@ -528,7 +501,7 @@ module regex
 !    return 1;
 !  if (matchpattern(pattern, text, matchlength))
 !      return 1;
-!  if (*text && matchone(p, *text++))
+!  if (*text && pat_match(p, *text++))
 !  {
 !    if (matchpattern(pattern, text, matchlength))
 !    {
@@ -542,8 +515,8 @@ module regex
 !
 
    ! Iterative matching
-   integer function matchpattern(pattern, text, matchlength) result(ierr)
-      class(regex_pattern), intent(inout) :: pattern
+   logical function matchpattern(pattern, text, matchlength) result(match)
+      class(regex_pattern), intent(in) :: pattern(:)
       character(kind=RCK,len=*), intent(in) :: text
       integer, intent(in) :: matchlength
 
@@ -581,7 +554,7 @@ module regex
 !*/
 !  (*matchlength)++;
 !  }
-!  while ((text[0] != '\0') && matchone(*pattern++, *text++));
+!  while ((text[0] != '\0') && pat_match(*pattern++, *text++));
 !
 !   *matchlength = pre;
 !
