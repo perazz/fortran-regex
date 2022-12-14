@@ -18,12 +18,10 @@ program tests
     do i=1,size(test1data,2)
        call get_test1(i,valid,pattern,str,length)
 
-       print *, 'parsing pattern.... '//pattern
        call add_test(test1(valid,pattern,str,length))
 
-       write(*,*)
+       if (nfailed>0) stop 'test failed'
 
-       if (i==5) stop 'stop at 5'
     end do
 
 
@@ -53,7 +51,6 @@ program tests
        call reg%parse(pattern)
 
        write(*,*) 'pattern = ',trim(pattern)
-
        call reg%write(output_unit)
 
        success = .true.

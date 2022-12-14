@@ -65,7 +65,7 @@ module regex
     ! Regex pattern element
     type, public :: regex_pattern
         integer :: type ! CHAR, star, ...
-        character(kind=RCK,len=:), allocatable :: ccl ! Characters in class
+        character(kind=RCK,len=MAX_CHAR_CLASS_LEN) :: ccl ! Characters in class
         contains
 
           procedure :: print => print_pattern
@@ -138,7 +138,7 @@ module regex
         integer :: i,ierr
         do i=1,MAX_REGEXP_OBJECTS
             this%pattern(i)%type = UNUSED
-            deallocate(this%pattern(i)%ccl,stat=ierr)
+            this%pattern(i)%ccl = ''
         end do
     end subroutine destroy
 
@@ -147,7 +147,7 @@ module regex
         integer :: i,ierr
         do i=1,MAX_REGEXP_OBJECTS
             this%pattern(i)%type = UNUSED
-            deallocate(this%pattern(i)%ccl,stat=ierr)
+            this%pattern(i)%ccl = ''
         end do
     end subroutine finalize
 
@@ -353,39 +353,27 @@ module regex
                 buf_begin = ccl_bufidx ! Remember where the char-buffer starts
 
                 ! Copy characters inside [..] to buffer */
-                copy_buf: do while (i<lenp)
-                    i = i+1
+                ccl_bufidx = index(pattern(i+1:),']')
 
-                    ! Until the end of this pattern
-                    if (pattern(i:i)==']') exit copy_buf
+                if (ccl_bufidx>0) then
+                    ccl_buf = pattern(i+1:i+ccl_bufidx-1)
+                    i = i+ccl_bufidx+1
+                else
+                    stop 'incomplete [] pattern'
+                end if
 
-                    if (pattern(i:i)==BACKSLASH0) then
-                        if (ccl_bufidx>=MAX_CHAR_CLASS_LEN) stop 'exceeded internal buffer!'
-                    end if
-
-                    ! Incomplete pattern, missing non-zero char after '\\'
-                    if (pattern(i+1:i+1)==achar(0)) then
-                        print *, 'pattern(i)=',pattern(i:i),' i+1=',pattern(i+1:i+1),' len=',lenp,' i=',i
-                        stop 'incomplete pattern'
-                        !return 0
-                    end if
-
-                    ccl_buf(ccl_bufidx:ccl_bufidx) = pattern(i:i)
-                    ccl_bufidx = ccl_bufidx+1
-                    i          = i+1
-
-                end do copy_buf
-
-!        if (ccl_bufidx >= MAX_CHAR_CLASS_LEN)
-!        {
-!            /* Catches cases such as [00000000000000000000000000000000000000][ */
-!            //fputs("exceeded internal buffer!\n", stderr);
-!            return 0;
-!        }
+                ! the only escaped character between brackets is \\
+                ! if present, replace double backslash with a single one
+                ccl_bufidx = index(ccl_buf,'\\')
+                if (ccl_bufidx>0) ccl_buf = ccl_buf(:ccl_bufidx)//ccl_buf(ccl_bufidx+2:)
 
                 ! Terminate string
-                ccl_buf(ccl_bufidx+1:MAX_CHAR_CLASS_LEN) = ' '
                 this%pattern(j)%ccl = trim(ccl_buf)
+
+         case default
+
+             ! Single character
+             this%pattern(j) = regex_pattern(ATCHAR,c)
 
          end select
 
@@ -394,6 +382,7 @@ module regex
          ! A pattern was added: move to next
          i = i+1
          j = j+1
+         if (j>MAX_REGEXP_OBJECTS) stop 'max regexp reached!'
 
        end do
 
@@ -409,7 +398,7 @@ module regex
         character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: buffer
         integer :: lt
 
-        write(buffer,1) types(pattern%type+1),pattern%ccl
+        write(buffer,1) types(pattern%type+1),trim(pattern%ccl)
 
         lt = len_trim(buffer)
         allocate(character(len=lt,kind=RCK) :: msg)
