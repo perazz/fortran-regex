@@ -1,5 +1,5 @@
 program tests
-    use regex
+    use regex_module
     use regex_testdata
     use iso_fortran_env, only: output_unit
     implicit none
@@ -37,24 +37,22 @@ program tests
         end if
     end subroutine add_test
 
-    logical function test1(valid,pattern,str,correct_len) result(success)
+    logical function test1(valid,pattern,string,correct_len) result(success)
        logical,      intent(in) :: valid
        character(*), intent(in) :: pattern
-       character(*), intent(in) :: str
+       character(*), intent(in) :: string
        integer,      intent(in) :: correct_len
 
+       integer :: idx,length
 
-       integer :: length
+       idx = regex(string, pattern, length)
 
-       type(regex_op) :: reg
+       success = valid .eqv. (idx>0) .and. (length == correct_len)
 
-       call reg%parse(pattern)
-
-       write(*,*) 'pattern = ',trim(pattern)
-       call reg%write(output_unit)
-
-       success = .true.
-
+       if (.not.success) then
+          write(*,*) 'pattern = ',trim(pattern),' string = ',trim(string),' idx = ',idx,' len = ',length
+          write(*,*) 'should be found? ',valid,' with length = ',correct_len
+       endif
 
     end function test1
 

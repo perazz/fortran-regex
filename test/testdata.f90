@@ -86,10 +86,10 @@ module regex_testdata
 
         if (.not.(itest>0 .and. itest<=size(test1data,2))) return
 
-        valid = trim(test1data(1,itest))=='OK'
+        valid   = trim(test1data(1,itest))=='YES'
         pattern = test1data(2,itest)
-        string = test1data(3,itest)
-        buffer = test1data(4,itest); read(buffer,*) length
+        string  = test1data(3,itest)
+        buffer  = test1data(4,itest); read(buffer,*) length
 
     end subroutine get_test1
 

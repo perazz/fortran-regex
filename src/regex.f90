@@ -15,13 +15,13 @@
 !     http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 !
 ! *************************************************************************************************
-module regex
+module regex_module
     implicit none
     private
 
     public :: parse_pattern
     !public :: re_matchp
-    !public :: re_match
+    public :: regex
 
     ! Character kind
     integer, parameter, public :: RCK = selected_char_kind("ascii")
@@ -88,13 +88,19 @@ module regex
 
         contains
 
-           procedure :: parse => parse_pattern
+           !procedure :: parse => parse_pattern
            procedure :: write => write_pattern
            procedure :: nrules
            procedure :: destroy
            final :: finalize
 
     end type regex_op
+
+    ! Public interface
+    interface regex
+        module procedure re_match
+        module procedure re_matchp
+    end interface regex
 
     contains
 
@@ -252,19 +258,91 @@ module regex
 
     end function matchcharclass
 
+    logical function matchquestion(p, pattern, text, matchlength)
+       type(regex_pattern), intent(in) :: p, pattern(:)
+       character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(inout) :: matchlength
+
+       matchquestion = .false.
+
+       if (p%type == UNUSED .or. matchpattern(pattern, text, matchlength)) then
+          matchquestion = .true.
+          return
+       elseif (len(text)>0 .and. pat_match(p,text(2:))) then
+          if (matchpattern(pattern,text(2:),matchlength)) then
+             matchlength = matchlength+1
+             matchquestion = .true.
+             return
+          end if
+       end if
+
+    end function matchquestion
+
+    logical function matchstar(p, pattern, text, matchlength)
+       type(regex_pattern), intent(in) :: p, pattern(:)
+       character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(inout) :: matchlength
+
+       integer :: prelen,it
+
+       ! Save input variables
+       prelen   = matchlength
+       it = 1
+
+       do while (it<=len(text) .and. pat_match(p, text(it:)))
+          it          = it+1
+          matchlength = matchlength+1
+       end do
+
+       do while (it>=1)
+         matchstar = matchpattern(pattern, text(it:), matchlength)
+         if (matchstar) return
+
+         it          = it-1
+         matchlength = matchlength-1
+
+       end do
+
+       matchlength = prelen
+       matchstar   = .false.
+
+    end function matchstar
+
+    logical function matchplus(p, pattern, text, matchlength)
+       type(regex_pattern), intent(in) :: p, pattern(:)
+       character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(inout) :: matchlength
+
+       integer :: it
+
+       it = 1
+       do while (it<=len(text) .and. pat_match(p, text(it:)))
+          it = it+1
+          matchlength = matchlength+1
+       end do
+
+       do while (it>1)
+          matchplus = matchpattern(pattern, text(it:), matchlength)
+          if (matchplus) return
+          it = it-1
+          matchlength = matchlength-1
+       end do
+
+       matchplus = .false.
+
+    end function matchplus
+
     ! Find matches of the given pattern in the string
-    integer function re_match(pattern, text, length)
+    integer function re_match(pattern, text, length) result(index)
        character(*,kind=RCK), intent(in) :: pattern
        character(*,kind=RCK), intent(in) :: text
        integer, intent(out) :: length
 
-       !re_match = re_matchp(parse_pattern(pattern),text,length)
-       stop 're_match not impl'
+       index = re_matchp(parse_pattern(pattern),text,length)
 
     end function re_match
 
-    subroutine parse_pattern(this, pattern)
-       class(regex_op), intent(inout) :: this
+    type(regex_op) function parse_pattern(pattern) result(this)
        character(*,kind=RCK), intent(in) :: pattern
 
        ! Local variables
@@ -381,7 +459,7 @@ module regex
        ! Save number of patterns
        this%n = j-1
 
-    end subroutine parse_pattern
+    end function parse_pattern
 
     function print_pattern(pattern) result(msg)
         class(regex_pattern), intent(in) :: pattern
@@ -434,18 +512,23 @@ module regex
 
              ! String must begin with this pattern
              index = merge(1,0,matchpattern([pattern%pattern(2)], text, matchlength))
+             !print *, 'begin with? index = ',index
 
           else
 
              do index=1,len(text)
-                if (matchpattern(pattern%pattern,text,matchlength)) return
+                if (matchpattern(pattern%pattern,text(index:),matchlength)) return
              end do
+
+             !print *, 'all patterns not matched'
 
              index = 0
 
           end if
 
        else
+
+          !print *, 'pattern has no patterns'
 
           index = 0
 
@@ -456,124 +539,62 @@ module regex
 
 
 
-!
-!static int matchstar(regex_pattern p, regex_pattern* pattern, const char* text, int* matchlength)
-!{
-!  int prelen = *matchlength;
-!  const char* prepoint = text;
-!  while ((text[0] != '\0') && pat_match(p, *text))
-!  {
-!    text++;
-!    (*matchlength)++;
-!  }
-!  while (text >= prepoint)
-!  {
-!    if (matchpattern(pattern, text--, matchlength))
-!      return 1;
-!    (*matchlength)--;
-!  }
-!
-!  *matchlength = prelen;
-!  return 0;
-!}
-!
-!static int matchplus(regex_pattern p, regex_pattern* pattern, const char* text, int* matchlength)
-!{
-!  const char* prepoint = text;
-!  while ((text[0] != '\0') && pat_match(p, *text))
-!  {
-!    text++;
-!    (*matchlength)++;
-!  }
-!  while (text > prepoint)
-!  {
-!    if (matchpattern(pattern, text--, matchlength))
-!      return 1;
-!    (*matchlength)--;
-!  }
-!
-!  return 0;
-!}
-!
-!static int matchquestion(regex_pattern p, regex_pattern* pattern, const char* text, int* matchlength)
-!{
-!  if (p.type == UNUSED)
-!    return 1;
-!  if (matchpattern(pattern, text, matchlength))
-!      return 1;
-!  if (*text && pat_match(p, *text++))
-!  {
-!    if (matchpattern(pattern, text, matchlength))
-!    {
-!      (*matchlength)++;
-!      return 1;
-!    }
-!  }
-!  return 0;
-!}
-!
-!
+
+
+
 
    ! Iterative matching
    logical function matchpattern(pattern, text, matchlength) result(match)
       class(regex_pattern), intent(in) :: pattern(:)
       character(kind=RCK,len=*), intent(in) :: text
-      integer, intent(in) :: matchlength
+      integer, intent(inout) :: matchlength
 
-      integer :: pre
+      integer :: pre,ip,it
 
       pre = matchlength
+      ip  = 1
+      it  = 1
 
-!
-!      iterate: do
-!
-!
-!  do
-!  {
-!    if ((pattern[0].type == UNUSED) || (pattern[1].type == QUESTIONMARK))
-!    {
-!      return matchquestion(pattern[0], &pattern[2], text, matchlength);
-!    }
-!    else if (pattern[1].type == STAR)
-!    {
-!      return matchstar(pattern[0], &pattern[2], text, matchlength);
-!    }
-!    else if (pattern[1].type == PLUS)
-!    {
-!      return matchplus(pattern[0], &pattern[2], text, matchlength);
-!    }
-!    else if ((pattern[0].type == END) && pattern[1].type == UNUSED)
-!    {
-!      return (text[0] == '\0');
-!    }
-!/*  Branching is not working properly
-!    else if (pattern[1].type == BRANCH)
-!    {
-!      return (matchpattern(pattern, text) || matchpattern(&pattern[2], text));
-!    }
-!*/
-!  (*matchlength)++;
-!  }
-!  while ((text[0] != '\0') && pat_match(*pattern++, *text++));
-!
-!   *matchlength = pre;
-!
-!   ierr = 0
-!
-!   end function matchpattern
-!
-!static int matchpattern(regex_pattern* pattern, const char* text, int* matchlength)
-!{
-!  int pre = *matchlength;
-!
-!}
-!
-!#endif
-!
-!
+      iterate: do while (ip<=size(pattern))
+
+         if (pattern(ip)%type == UNUSED .or. pattern(ip+1)%type == QUESTIONMARK) then
+
+            match = matchquestion(pattern(ip),pattern(ip+2:),text(it:),matchlength)
+            return
+
+         elseif (pattern(ip+1)%type == STAR) then
+
+            match = matchstar(pattern(ip),pattern(ip+2:), text(it:), matchlength)
+            return
+
+         elseif (pattern(ip+1)%type == PLUS) then
+
+            match = matchplus(pattern(ip),pattern(ip+2:), text(it:), matchlength)
+            return
+
+         elseif (pattern(ip)%type == END_WITH .and. pattern(ip+1)%type == UNUSED) then
+
+            match = len(text(it:))<=0
+            return
+
+         end if
+
+         matchlength = matchlength+1
+
+         ip = ip+1
+         it = it+1
+         if (it>len(text)) exit iterate
+         if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
+
+      end do iterate
+
+      matchlength = pre
+      match = .false.
+      return
+
    end function matchpattern
 
 
 
 
-end module regex
+end module regex_module
