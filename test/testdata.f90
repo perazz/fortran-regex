@@ -6,26 +6,26 @@ module regex_testdata
     ! Some tests from tiny-regex-c
     ! valid, pattern, string, length
     character(len=*,kind=RCK), parameter :: test1data(4,67) = reshape([ character(len=30) :: &
-        "YES", "\\d                           ", "5                             ", "1 ", &
-        "YES", "\\w+                          ", "hej                           ", "3 ", &
-        "YES", "\\s                           ", "\t \n                         ", "1 ", &
-        "NO ", "\\S                           ", "\t \n                         ", "0 ", &
-        "YES", "[\\s]                         ", "\t \n                         ", "1 ", &
-        "NO ", "[\\S]                         ", "\t \n                         ", "0 ", &
-        "NO ", "\\D                           ", "5                             ", "0 ", &
-        "NO ", "\\W+                          ", "hej                           ", "0 ", &
+        "YES", "\d                           ", "5                             ", "1 ", &
+        "YES", "\w+                          ", "hej                           ", "3 ", &
+        "YES", "\s                           ", "\t \n                         ", "1 ", &
+        "NO ", "\S                           ", "\t \n                         ", "0 ", &
+        "YES", "[\s]                         ", "\t \n                         ", "1 ", &
+        "NO ", "[\S]                         ", "\t \n                         ", "0 ", &
+        "NO ", "\D                           ", "5                             ", "0 ", &
+        "NO ", "\W+                          ", "hej                           ", "0 ", &
         "YES", "[0-9]+                        ", "12345                         ", "5 ", &
-        "YES", "\\D                           ", "hej                           ", "1 ", &
-        "NO ", "\\d                           ", "hej                           ", "0 ", &
-        "YES", "[^\\w]                        ", "\\                            ", "1 ", &
-        "YES", "[\\W]                         ", "\\                            ", "1 ", &
-        "NO ", "[\\w]                         ", "\\                            ", "0 ", &
-        "YES", "[^\\d]                        ", "d                             ", "1 ", &
-        "NO ", "[\\d]                         ", "d                             ", "0 ", &
-        "NO ", "[^\\D]                        ", "d                             ", "0 ", &
-        "YES", "[\\D]                         ", "d                             ", "1 ", &
-        "YES", "^.*\\\\.*$                    ", "c:\\Tools                     ", "8 ", &
-        "YES", "^[\\+-]*[\\d]+$               ", "+27                           ", "3 ", &
+        "YES", "\D                           ", "hej                           ", "1 ", &
+        "NO ", "\d                           ", "hej                           ", "0 ", &
+        "YES", "[^\w]                        ", "\                            ", "1 ", &
+        "YES", "[\W]                         ", "\                            ", "1 ", &
+        "NO ", "[\w]                         ", "\                            ", "0 ", &
+        "YES", "[^\d]                        ", "d                             ", "1 ", &
+        "NO ", "[\d]                         ", "d                             ", "0 ", &
+        "NO ", "[^\D]                        ", "d                             ", "0 ", &
+        "YES", "[\D]                         ", "d                             ", "1 ", &
+        "YES", "^.*\\.*$                    ", "c:\Tools                     ", "8 ", &
+        "YES", "^[\+-]*[\d]+$               ", "+27                           ", "3 ", &
         "YES", "[abc]                         ", "1c2                           ", "1 ", &
         "NO ", "[abc]                         ", "1C2                           ", "0 ", &
         "YES", "[1-5]+                        ", "0123456789                    ", "5 ", &
@@ -36,11 +36,11 @@ module regex_testdata
         "NO ", "[a-h]+                        ", "ABCDEFGH                      ", "0 ", &
         "YES", "[A-H]+                        ", "ABCDEFGH                      ", "8 ", &
         "NO ", "[A-H]+                        ", "abcdefgh                      ", "0 ", &
-        "YES", "[^\\s]+                       ", "abc def                       ", "3 ", &
+        "YES", "[^\s]+                       ", "abc def                       ", "3 ", &
         "YES", "[^fc]+                        ", "abc def                       ", "2 ", &
-        "YES", "[^d\\sf]+                     ", "abc def                       ", "3 ", &
+        "YES", "[^d\sf]+                     ", "abc def                       ", "3 ", &
         "YES", "\n                            ", "abc\ndef                      ", "1 ", &
-        "YES", "b.\\s*\n                      ", "aa\r\nbb\r\ncc\r\n\r\n        ", "4 ", &
+        "YES", "b.\s*\n                      ", "aa\r\nbb\r\ncc\r\n\r\n        ", "4 ", &
         "YES", ".*c                           ", "abcabc                        ", "6 ", &
         "YES", ".+c                           ", "abcabc                        ", "6 ", &
         "YES", "[b-z].*                       ", "ab                            ", "1 ", &
@@ -48,31 +48,31 @@ module regex_testdata
         "NO ", "[0-9]                         ", "-                             ", "0 ", &
         "YES", "[^0-9]                        ", "-                             ", "1 ", &
         "YES", "0|                            ", "0|                            ", "2 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "0s:00:00                      ", "0 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "000:00                        ", "0 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "00:0000                       ", "0 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "100:0:00                      ", "0 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "00:100:00                     ", "0 ", &
-        "NO ", "\\d\\d:\\d\\d:\\d\\d          ", "0:00:100                      ", "0 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "0:0:0                         ", "5 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "0:00:0                        ", "6 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "0:0:00                        ", "5 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "00:0:0                        ", "6 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "00:00:0                       ", "7 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "00:0:00                       ", "6 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "0:00:00                       ", "6 ", &
-        "YES", "\\d\\d?:\\d\\d?:\\d\\d?       ", "00:00:00                      ", "7 ", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "Hello world !                 ", "12", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "hello world !                 ", "12", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "Hello World !                 ", "12", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "Hello world!                  ", "11", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "Hello world  !                ", "13", &
-        "YES", "[Hh]ello [Ww]orld\\s*[!]?     ", "hello World    !              ", "15", &
+        "NO ", "\d\d:\d\d:\d\d          ", "0s:00:00                      ", "0 ", &
+        "NO ", "\d\d:\d\d:\d\d          ", "000:00                        ", "0 ", &
+        "NO ", "\d\d:\d\d:\d\d          ", "00:0000                       ", "0 ", &
+        "NO ", "\d\d:\d\d:\d\d          ", "100:0:00                      ", "0 ", &
+        "NO ", "\d\d:\d\d:\d\d          ", "00:100:00                     ", "0 ", &
+        "NO ", "\d\d:\d\d:\d\d          ", "0:00:100                      ", "0 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "0:0:0                         ", "5 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "0:00:0                        ", "6 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "0:0:00                        ", "5 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "00:0:0                        ", "6 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "00:00:0                       ", "7 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "00:0:00                       ", "6 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "0:00:00                       ", "6 ", &
+        "YES", "\d\d?:\d\d?:\d\d?       ", "00:00:00                      ", "7 ", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "Hello world !                 ", "12", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "hello world !                 ", "12", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "Hello World !                 ", "12", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "Hello world!                  ", "11", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "Hello world  !                ", "13", &
+        "YES", "[Hh]ello [Ww]orld\s*[!]?     ", "hello World    !              ", "15", &
         "YES", ".?bar                         ", "real_bar                      ", "4 ", &
         "NO ", ".?bar                         ", "real_foo                      ", "0 ", &
         "NO ", "X?Y                           ", "Z                             ", "0 ", &
         "YES", "[a-z]+\nbreak                 ", "blahblah\nbreak               ", "14", &
-        "YES", "[a-z\\s]+\nbreak              ", "bla bla \nbreak               ", "14"],[4,67])
+        "YES", "[a-z\s]+\nbreak              ", "bla bla \nbreak               ", "14"],[4,67])
 
     contains
 

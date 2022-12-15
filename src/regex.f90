@@ -20,7 +20,6 @@ module regex_module
     private
 
     public :: parse_pattern
-    !public :: re_matchp
     public :: regex
 
     ! Character kind
@@ -29,7 +28,7 @@ module regex_module
     logical, parameter, public :: RE_DOT_MATCHES_NEWLINE = .true. ! Define .false. if you DON'T want '.' to match '\r' + '\n'
     integer, parameter, public :: MAX_REGEXP_OBJECTS = 512        ! Max number of regex symbols in expression.
     integer, parameter, public :: MAX_CHAR_CLASS_LEN = 1024       ! Max length of character-class buffer in.
-    logical, parameter :: DEBUG = .false.
+    logical, parameter :: DEBUG = .true.
 
     ! Supported patterns
     integer, parameter :: UNUSED         = 0
@@ -60,9 +59,9 @@ module regex_module
     character(kind=RCK), parameter :: UNDERSCORE = "_"
     character(kind=RCK), parameter :: SPACE      = " "
     character(kind=RCK), parameter :: DASH       = "-"
-    character(kind=RCK), parameter :: BACKSLASH0 = achar(0,kind=RCK)  ! \0 or null character
-    character(kind=RCK), parameter :: NEWLINE    = achar(10,kind=RCK) ! \n or line feed
-    character(kind=RCK), parameter :: BACKSPCE   = achar(8,kind=RCK)  ! \b or backspace character
+    character(kind=RCK), parameter :: BACKSLASH0 = achar( 0,kind=RCK)  ! \0 or null character
+    character(kind=RCK), parameter :: NEWLINE    = achar(10,kind=RCK)  ! \n or line feed
+    character(kind=RCK), parameter :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
 
 
     ! Regex pattern element
@@ -184,12 +183,12 @@ module regex_module
 
     elemental logical function isdigit(c)
        character(kind=RCK), intent(in) :: c
-       isdigit = index(c,"01234567890")>0
+       isdigit = index("1234567890",c)>0
     end function isdigit
 
     elemental logical function isalpha(c)
        character(kind=RCK), intent(in) :: c
-       isalpha = index(c,lowercase)>0 .or. index(c,uppercase)>0
+       isalpha = index(lowercase,c)>0 .or. index(uppercase,c)>0
     end function isalpha
 
     elemental logical function isalphanum(c)
@@ -216,43 +215,44 @@ module regex_module
 
     end function matchrange
 
-    elemental logical function matchcharclass(c,str)
-       character(kind=RCK), intent(in) :: c
-       character(kind=RCK,len=*), intent(in) :: str
+    elemental logical function matchcharclass(c,str) result(match)
+       character(kind=RCK), intent(in) :: c         ! The current character
+       character(kind=RCK,len=*), intent(in) :: str ! The charclass contents
 
        integer :: i
 
-       matchcharclass = .false.
+       match = .false.
        i = 0
 
-       loop: do
+       ! All characters
+       loop: do while (i<len_trim(str))
 
           i = i+1
 
-          if (matchrange(c,str(i:))) then
-             matchcharclass = .true.
-             return
-          elseif (str(i:i+1) == BACKSLASH0) then
-             ! Escape-char: increment str-ptr and match on next char
+          ! We're in a range: must check this further
+          match = matchrange(c,str(i:)); if (match) return
+
+          ! Escaped character? look what's next
+          if (str(i:i) == '\') then
+
              i = i+1
 
-             if (matchmetachar(c,str(i:))) then
-                matchcharclass = .true.
-                return
-             elseif (c==str(i:i) .and. .not.ismetachar(c)) then
-                matchcharclass = .true.
-                return
-             end if
+             ! Valid escaped sequence
+             match = matchmetachar(c,str(i:)); if (match) return
+
+             match = (c==str(i:i) .and. .not.ismetachar(c)); if (match) return
+
           elseif (c==str(i:i)) then
+
+             ! Character match
              if (c==DASH) then
-                matchcharclass = str(i-1:i-1)==BACKSLASH0 .or. str(i+1:i+1)==BACKSLASH0
+                ! If this is a range, there must be something both before and later
+                match = i-1<=0 .or. i+1>len(str)
              else
-                matchcharclass = .true.
+                match = .true.
              end if
              return
           end if
-
-          if (i==len(str)) exit loop
 
        end do loop
 
@@ -263,12 +263,17 @@ module regex_module
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(inout) :: matchlength
 
+       print *, 'question'
+
        matchquestion = .false.
 
-       if (p%type == UNUSED .or. matchpattern(pattern, text, matchlength)) then
+       if (p%type == UNUSED) then
           matchquestion = .true.
           return
-       elseif (len(text)>0 .and. pat_match(p,text(2:))) then
+       elseif (matchpattern(pattern, text, matchlength)) then
+          matchquestion = .true.
+          return
+       elseif (len(text)>0 .and. pat_match(p,text)) then
           if (matchpattern(pattern,text(2:),matchlength)) then
              matchlength = matchlength+1
              matchquestion = .true.
@@ -333,12 +338,12 @@ module regex_module
     end function matchplus
 
     ! Find matches of the given pattern in the string
-    integer function re_match(pattern, text, length) result(index)
+    integer function re_match(text, pattern, length) result(index)
        character(*,kind=RCK), intent(in) :: pattern
        character(*,kind=RCK), intent(in) :: text
        integer, intent(out) :: length
 
-       index = re_matchp(parse_pattern(pattern),text,length)
+       index = re_matchp(text,parse_pattern(pattern),length)
 
     end function re_match
 
@@ -353,7 +358,7 @@ module regex_module
        ! Initialize class
        call this%destroy()
 
-       if (DEBUG) print *, "[regex] parsing pattern: <"//pattern//">"
+       if (DEBUG) print "('[regex] parsing pattern: <',a,'>')", trim(pattern)
 
        i = 1 ! index in pattern
        j = 1 ! index in re-compiled
@@ -363,7 +368,7 @@ module regex_module
        to_the_moon: do while (i<=lenp)
 
          c = pattern(i:i)
-         if (DEBUG) print *, "[regex] at location ",i,': <',c,'>'
+         if (DEBUG) print "('[regex] at location ',i0,': <',a,'>')", i, c
 
          select case (c)
 
@@ -413,7 +418,7 @@ module regex_module
                     i = i+1 ! Increment i to avoid including "^" in the char-buffer
 
                     ! Check this is not an incomplete pattern
-                    if (pattern(i+1:i+1)==BACKSLASH0) then
+                    if (i>=lenp) then
                         stop 'incomplete pattern'
                         return
                     end if
@@ -427,7 +432,9 @@ module regex_module
 
                 if (loc>0) then
                     ccl_buf = pattern(i+1:i+loc-1)
-                    i = i+loc+1
+                    i = i+loc
+                    if (DEBUG) print "('[regex] at end of multi-character pattern: ',a)", trim(ccl_buf)
+
                 else
                     stop 'incomplete [] pattern'
                 end if
@@ -447,7 +454,7 @@ module regex_module
 
          end select
 
-         if (DEBUG) print *, "[regex] added pattern ",j,': ',this%pattern(j)%print()
+         if (DEBUG) print "('[regex] added pattern ',i0,': ',a)",j,this%pattern(j)%print()
 
          ! A pattern was added: move to next
          i = i+1
@@ -468,7 +475,7 @@ module regex_module
         character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: buffer
         integer :: lt
 
-        write(buffer,1) types(pattern%type+1),trim(pattern%ccl)
+        write(buffer,1) trim(types(pattern%type+1)),trim(pattern%ccl)
 
         lt = len_trim(buffer)
         allocate(character(len=lt,kind=RCK) :: msg)
@@ -479,7 +486,7 @@ module regex_module
     end function print_pattern
 
     ! Match a single pattern at the g
-    elemental logical function pat_match(p, c) result(match)
+    logical function pat_match(p, c) result(match)
        class(regex_pattern), intent(in) :: p
        character(kind=RCK), intent(in) :: c
 
@@ -496,10 +503,12 @@ module regex_module
           case default;          match = c==p%ccl(1:1)
        end select
 
+       if (DEBUG) print "('[regex] current pattern=',a,' at char=',a,' match? ',l1)", p%print(),c,match
+
     end function pat_match
 
 
-    integer function re_matchp(pattern, text, matchlength) result(index)
+    integer function re_matchp(text, pattern, matchlength) result(index)
        type(regex_op) :: pattern
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(out) :: matchlength
@@ -552,6 +561,7 @@ module regex_module
       integer :: pre,ip,it
 
       pre = matchlength
+      print *, 'initial length ',pre
       ip  = 1
       it  = 1
 
@@ -581,10 +591,11 @@ module regex_module
 
          matchlength = matchlength+1
 
+         if (it>=len(text)) exit iterate
+         if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
+
          ip = ip+1
          it = it+1
-         if (it>len(text)) exit iterate
-         if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
 
       end do iterate
 
