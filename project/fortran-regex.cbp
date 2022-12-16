@@ -13,6 +13,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add option="-fcheck=bounds" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -39,10 +40,10 @@
 			<Option weight="0" />
 		</Unit>
 		<Unit filename="../test/test_1.f90">
-			<Option weight="2" />
+			<Option weight="1" />
 		</Unit>
 		<Unit filename="../test/testdata.f90">
-			<Option weight="1" />
+			<Option weight="0" />
 		</Unit>
 		<Extensions />
 	</Project>

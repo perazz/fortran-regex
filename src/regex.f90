@@ -163,7 +163,7 @@ module regex_module
 
     elemental logical function ismetachar(c)
        character(kind=RCK), intent(in) :: c
-       ismetachar = index(c,"sSwWdD")>0
+       ismetachar = index("sSwWdD",c)>0
     end function ismetachar
 
     pure logical function matchmetachar(c, str)
@@ -204,18 +204,18 @@ module regex_module
     ! Match range of the tye 0-9  or 5-7 etc.
     elemental logical function matchrange(c,str)
        character(kind=RCK), intent(in) :: c
-       character(kind=RCK,len=*), intent(in) :: str
+       character(kind=RCK,len=*), intent(in) :: str ! the range pattern
 
-       matchrange = len(str)>=3 .and. &
-                    c /= DASH &
+       matchrange = len(str)>=3 &
+                    .and. c /= DASH &
                     .and. str(1:1) /= DASH &
                     .and. str(2:2) == DASH &
-                    .and. ichar(c)>=ichar(str(1:1)) &
-                    .and. ichar(c)<=ichar(str(3:3))    ! Range (number/letters) is in increasing order
+                    .and. iachar(c)>=iachar(str(1:1)) &
+                    .and. iachar(c)<=iachar(str(3:3))    ! Range (number/letters) is in increasing order
 
     end function matchrange
 
-    elemental logical function matchcharclass(c,str) result(match)
+    logical function matchcharclass(c,str) result(match)
        character(kind=RCK), intent(in) :: c         ! The current character
        character(kind=RCK,len=*), intent(in) :: str ! The charclass contents
 
@@ -224,30 +224,40 @@ module regex_module
        match = .false.
        i = 0
 
-       ! All characters
+       ! All characters in the charclass contents
        loop: do while (i<len_trim(str))
 
           i = i+1
 
           ! We're in a range: must check this further
-          match = matchrange(c,str(i:)); if (match) return
+          if (matchrange(c,str(i:))) then
+            match = .true.
+            return
 
           ! Escaped character? look what's next
-          if (str(i:i) == '\') then
+          elseif (str(i:i) == '\') then
 
              i = i+1
 
              ! Valid escaped sequence
-             match = matchmetachar(c,str(i:)); if (match) return
 
-             match = (c==str(i:i) .and. .not.ismetachar(c)); if (match) return
+             if (matchmetachar(c,str(i:))) then
+                match = .true.
+                print *, 'match meta, c=',c
+                return
+             elseif (c==str(i:i) .and. (.not.ismetachar(c))) then
+                match = .true.
+                print *, 'match not meta, c=',c
+                return
+             endif
 
           elseif (c==str(i:i)) then
 
              ! Character match
              if (c==DASH) then
-                ! If this is a range, there must be something both before and later
-                match = i-1<=0 .or. i+1>len(str)
+                ! If this is a range, the character must be in this range, that we evaluate with the ASCII collating sequence
+                match = i<=0 .or. i+1>len_trim(str)
+                print *, 'c is dash! match=',match
              else
                 match = .true.
              end if
@@ -256,6 +266,8 @@ module regex_module
 
        end do loop
 
+       print *, 'charclass: no match on i=',i,' str=',trim(str),' c=',c
+
     end function matchcharclass
 
     logical function matchquestion(p, pattern, text, matchlength)
@@ -263,47 +275,57 @@ module regex_module
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(inout) :: matchlength
 
-       print *, 'question'
-
        matchquestion = .false.
 
        if (p%type == UNUSED) then
           matchquestion = .true.
+          print *, 'unused -> match'
           return
        elseif (matchpattern(pattern, text, matchlength)) then
+          print *, 'matchquestion 2: length=',matchlength,' match=.true.'
           matchquestion = .true.
           return
-       elseif (len(text)>0 .and. pat_match(p,text)) then
-          if (matchpattern(pattern,text(2:),matchlength)) then
-             matchlength = matchlength+1
-             matchquestion = .true.
-             return
+       elseif (len(text)>0) then
+          if (pat_match(p,text) .and. len(text)>1) then
+             if (matchpattern(pattern,text(2:),matchlength)) then
+                matchlength  = matchlength+1
+                matchquestion = .true.
+                return
+             endif
           end if
        end if
 
     end function matchquestion
 
-    logical function matchstar(p, pattern, text, matchlength)
+    logical function matchstar(p, pattern, text, it0, matchlength)
        type(regex_pattern), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(in)    :: it0 ! starting point
        integer, intent(inout) :: matchlength
 
        integer :: prelen,it
 
+       print *, 'match star, length=',matchlength,' it0=',it0,' lenm=',len(text)
+
+       if (len(text)<=0) then
+          matchstar = .false.
+          return
+       end if
+
        ! Save input variables
        prelen   = matchlength
-       it = 1
+       it = it0
 
-       do while (it<=len(text) .and. pat_match(p, text(it:)))
+       do while (it>0 .and. it<=len(text))
+          if (.not.pat_match(p, text(it:))) exit
           it          = it+1
           matchlength = matchlength+1
        end do
 
-       do while (it>=1)
+       do while (it>=it0)
          matchstar = matchpattern(pattern, text(it:), matchlength)
-         if (matchstar) return
-
          it          = it-1
+         if (matchstar) return
          matchlength = matchlength-1
 
        end do
@@ -313,23 +335,27 @@ module regex_module
 
     end function matchstar
 
-    logical function matchplus(p, pattern, text, matchlength)
+    logical function matchplus(p, pattern, text, it0, matchlength)
        type(regex_pattern), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
+       integer, intent(in) :: it0
        integer, intent(inout) :: matchlength
 
        integer :: it
 
-       it = 1
-       do while (it<=len(text) .and. pat_match(p, text(it:)))
+       print *, 'matchplus'
+
+       it = it0
+       do while (it>0 .and. it<=len(text))
+          if (.not. pat_match(p, text(it:))) exit
           it = it+1
           matchlength = matchlength+1
        end do
 
-       do while (it>1)
+       do while (it>it0)
           matchplus = matchpattern(pattern, text(it:), matchlength)
-          if (matchplus) return
           it = it-1
+          if (matchplus) return
           matchlength = matchlength-1
        end do
 
@@ -342,8 +368,10 @@ module regex_module
        character(*,kind=RCK), intent(in) :: pattern
        character(*,kind=RCK), intent(in) :: text
        integer, intent(out) :: length
+       type (regex_op) :: command
 
-       index = re_matchp(text,parse_pattern(pattern),length)
+       command = parse_pattern(pattern)
+       index = re_matchp(text,command,length)
 
     end function re_match
 
@@ -411,6 +439,8 @@ module regex_module
             ! Character class
             case ('[')
 
+                loc = 1
+
                 ! First, check if this class is negated ("^")
                 if (pattern(i+1:i+1)=='^') then
                     this%pattern(j)%type = INV_CHAR_CLASS
@@ -427,22 +457,26 @@ module regex_module
                     this%pattern(j)%type = AT_CHAR_CLASS
                 end if
 
-                ! Copy characters inside [..] to buffer */
+                ! Remove any escape characters
                 loc = index(pattern(i+1:),']')
-
                 if (loc>0) then
                     ccl_buf = pattern(i+1:i+loc-1)
                     i = i+loc
                     if (DEBUG) print "('[regex] at end of multi-character pattern: ',a)", trim(ccl_buf)
-
                 else
                     stop 'incomplete [] pattern'
                 end if
 
-                ! the only escaped character between brackets is \\
-                ! if present, replace double backslash with a single one
-                loc = index(ccl_buf,'\\')
-                if (loc>0) ccl_buf = ccl_buf(:loc)//ccl_buf(loc+2:)
+                ! If there is any escape character(s), just check that the next is nonempty
+                loc = index(ccl_buf,'\')
+                if (loc>0) then
+                    if (loc>=len(ccl_buf)) then
+                        stop 'incomplete escaped character inside [] pattern'
+                    end if
+                    if (ccl_buf(loc+1:loc+1)==SPACE) then
+                        stop 'empty escaped character inside [] pattern'
+                    end if
+                end if
 
                 ! Terminate string
                 this%pattern(j)%ccl = trim(ccl_buf)
@@ -520,8 +554,8 @@ module regex_module
           if (pattern%pattern(1)%type == BEGIN_WITH) then
 
              ! String must begin with this pattern
-             index = merge(1,0,matchpattern([pattern%pattern(2)], text, matchlength))
-             !print *, 'begin with? index = ',index
+             index = merge(1,0,matchpattern(pattern%pattern(2:), text, matchlength))
+             print *, 'begin with? index = ',index
 
           else
 
@@ -529,7 +563,7 @@ module regex_module
                 if (matchpattern(pattern%pattern,text(index:),matchlength)) return
              end do
 
-             !print *, 'all patterns not matched'
+             print *, 'all patterns not matched, ',text
 
              index = 0
 
@@ -561,39 +595,44 @@ module regex_module
       integer :: pre,ip,it
 
       pre = matchlength
-      print *, 'initial length ',pre
       ip  = 1
       it  = 1
 
       iterate: do while (ip<=size(pattern))
 
+         print *, 'trying pattern ',pattern(ip)%print(),' on character ',text(it:)
+
          if (pattern(ip)%type == UNUSED .or. pattern(ip+1)%type == QUESTIONMARK) then
 
+            print *, 'before matchquestion = ',match,' length=',matchlength
             match = matchquestion(pattern(ip),pattern(ip+2:),text(it:),matchlength)
+            print *, 'matchquestion = ',match,' length=',matchlength
             return
 
          elseif (pattern(ip+1)%type == STAR) then
 
-            match = matchstar(pattern(ip),pattern(ip+2:), text(it:), matchlength)
+            match = matchstar(pattern(ip),pattern(ip+2:), text, it, matchlength)
             return
 
          elseif (pattern(ip+1)%type == PLUS) then
 
-            match = matchplus(pattern(ip),pattern(ip+2:), text(it:), matchlength)
+            match = matchplus(pattern(ip),pattern(ip+2:), text, it, matchlength)
             return
 
          elseif (pattern(ip)%type == END_WITH .and. pattern(ip+1)%type == UNUSED) then
 
-            match = len(text(it:))<=0
+            print *, 'end pattern, len(text)',len(text(it:))
+
+            match = len(text(it:))<=1
             return
 
          end if
 
          matchlength = matchlength+1
 
-         if (it>=len(text)) exit iterate
+         if (it>len(text)) exit iterate
+         print *, 'pat match with ip=',ip,' it=',it,' len=',len(text),' matchlenght=',matchlength
          if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
-
          ip = ip+1
          it = it+1
 

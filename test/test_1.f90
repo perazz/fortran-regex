@@ -18,7 +18,7 @@ program tests
     do i=1,size(test1data,2)
        call get_test1(i,valid,pattern,str,length)
 
-       call add_test(test1(valid,pattern,str,length))
+       call add_test(test1(valid,pattern,trim(str),length))
 
        if (nfailed>0) stop 'test failed'
 

@@ -5,7 +5,7 @@ module regex_testdata
 
     ! Some tests from tiny-regex-c
     ! valid, pattern, string, length
-    character(len=*,kind=RCK), parameter :: test1data(4,67) = reshape([ character(len=30) :: &
+    character(len=*,kind=RCK), parameter :: test1data(4,66) = reshape([ character(len=30) :: &
         "YES", "\d                           ", "5                             ", "1 ", &
         "YES", "\w+                          ", "hej                           ", "3 ", &
         "YES", "\s                           ", "\t \n                         ", "1 ", &
@@ -40,7 +40,6 @@ module regex_testdata
         "YES", "[^fc]+                        ", "abc def                       ", "2 ", &
         "YES", "[^d\sf]+                     ", "abc def                       ", "3 ", &
         "YES", "\n                            ", "abc\ndef                      ", "1 ", &
-        "YES", "b.\s*\n                      ", "aa\r\nbb\r\ncc\r\n\r\n        ", "4 ", &
         "YES", ".*c                           ", "abcabc                        ", "6 ", &
         "YES", ".+c                           ", "abcabc                        ", "6 ", &
         "YES", "[b-z].*                       ", "ab                            ", "1 ", &
@@ -72,7 +71,10 @@ module regex_testdata
         "NO ", ".?bar                         ", "real_foo                      ", "0 ", &
         "NO ", "X?Y                           ", "Z                             ", "0 ", &
         "YES", "[a-z]+\nbreak                 ", "blahblah\nbreak               ", "14", &
-        "YES", "[a-z\s]+\nbreak              ", "bla bla \nbreak               ", "14"],[4,67])
+        "YES", "[a-z\s]+\nbreak              ", "bla bla \nbreak               ", "14"],[4,66])
+
+        ! These cases have C-specific characters and need be defined
+        ! "YES", "b.\s*\n                      ", "aa\r\nbb\r\ncc\r\n\r\n        ", "4 ", &
 
     contains
 
