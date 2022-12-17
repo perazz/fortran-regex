@@ -22,6 +22,17 @@ program tests
     ! Test #2
     call add_test(run_test2())
 
+    ! Test #3
+    call add_test(test_invalid())
+
+    if (nfailed<=0) then
+        print *, 'SUCCESS! all tests passed.'
+        stop 0
+    else
+        print *, 'ERROR: ',nfailed,' tests failed, ',npassed,' passed.'
+        stop 1
+    end if
+
 
 
 
@@ -35,6 +46,21 @@ program tests
             nfailed = nfailed+1
         end if
     end subroutine add_test
+
+    ! Test two bug patterns reported by @DavidKorczynski in https://github.com/kokke/tiny-regex-c/issues/44
+    logical function test_invalid() result(success)
+
+       type(regex_op) :: re
+
+       ! Test 1: inverted set without a closing ']'
+       re = parse_pattern("\\\x01[^\\\xff][^")
+       success = re%n==0; if (.not.success) return
+
+       ! Test 1: inverted set without a closing ']'
+       re = parse_pattern("\\\x01[^\\\xff][\\")
+       success = re%n==0; if (.not.success) return
+
+    end function test_invalid
 
 
 

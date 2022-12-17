@@ -474,9 +474,9 @@ module regex_module
 
                     i = i+1 ! Increment i to avoid including "^" in the char-buffer
 
-                    ! Check this is not an incomplete pattern
+                    ! incomplete pattern
                     if (i>=lenp) then
-                        stop 'incomplete pattern'
+                        call this%destroy()
                         return
                     end if
 
@@ -491,17 +491,23 @@ module regex_module
                     i = i+loc
                     if (DEBUG) print "('[regex] at end of multi-character pattern: ',a)", trim(ccl_buf)
                 else
-                    stop 'incomplete [] pattern'
+                    ! Incomplete [] pattern
+                    call this%destroy()
+                    return
                 end if
 
                 ! If there is any escape character(s), just check that the next is nonempty
                 loc = index(ccl_buf,'\')
                 if (loc>0) then
                     if (loc>=len(ccl_buf)) then
-                        stop 'incomplete escaped character inside [] pattern'
+                        ! stop 'incomplete escaped character inside [] pattern'
+                        call this%destroy()
+                        return
                     end if
                     if (ccl_buf(loc+1:loc+1)==SPACE) then
-                        stop 'empty escaped character inside [] pattern'
+                        ! stop 'empty escaped character inside [] pattern'
+                        call this%destroy()
+                        return
                     end if
                 end if
 
@@ -526,6 +532,7 @@ module regex_module
 
        ! Save number of patterns
        this%n = j-1
+       return
 
     end subroutine new_from_pattern
 
