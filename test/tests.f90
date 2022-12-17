@@ -90,6 +90,12 @@ program tests
        success = idx>0;  if (.not.success) return
        success = text(idx:idx+ln-1) == "e f"
 
+       idx = REGEX(string=text,pattern='e[ ]+f',length=ln);
+
+       ! Prints "football"
+       success = idx>0;  if (.not.success) return
+       success = text(idx:idx+ln-1) == "e f"
+
     end function test_bracket_space
 
 

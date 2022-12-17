@@ -490,8 +490,6 @@ module regex_test_2
              last = last+80
           end do
 
-
-
        close(iunit)
 
        1 format(4x,'character(len=*), parameter :: test2data(*) = [ &')
