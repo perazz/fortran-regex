@@ -73,8 +73,7 @@ module regex_module
         integer :: type = UNUSED
 
         ! Single or multi-character pattern
-        character(kind=RCK,len=MAX_CHAR_CLASS_LEN) :: ccl = repeat(' ',MAX_CHAR_CLASS_LEN)
-
+        character(kind=RCK,len=:), allocatable :: ccl
         contains
 
           procedure :: print => print_pattern
@@ -112,8 +111,9 @@ module regex_module
     ! Clean up a pattern
     elemental subroutine pat_destroy(this)
        class(regex_pattern), intent(inout) :: this
+       integer :: ierr
        this%type = UNUSED
-       this%ccl  = repeat(' ',MAX_CHAR_CLASS_LEN)
+       deallocate(this%ccl,stat=ierr)
     end subroutine pat_destroy
 
     ! Number of rules in the current pattern
@@ -147,19 +147,17 @@ module regex_module
 
     elemental subroutine destroy(this)
         class(regex_op), intent(inout) :: this
-        integer :: i,ierr
+        integer :: i
         do i=1,MAX_REGEXP_OBJECTS
-            this%pattern(i)%type = UNUSED
-            this%pattern(i)%ccl = ''
+            call this%pattern(i)%destroy()
         end do
     end subroutine destroy
 
     subroutine finalize(this)
         type(regex_op), intent(inout) :: this
-        integer :: i,ierr
+        integer :: i
         do i=1,MAX_REGEXP_OBJECTS
-            this%pattern(i)%type = UNUSED
-            this%pattern(i)%ccl = ''
+            call this%pattern(i)%destroy()
         end do
     end subroutine finalize
 
@@ -237,7 +235,7 @@ module regex_module
        i = 0
 
        ! All characters in the charclass contents
-       loop: do while (i<len_trim(str))
+       loop: do while (i<len(str))
 
           i = i+1
 
@@ -266,7 +264,7 @@ module regex_module
              ! Character match
              if (c==DASH) then
                 ! If this is a range, the character must be in this range, that we evaluate with the ASCII collating sequence
-                match = i<=0 .or. i+1>len_trim(str)
+                match = i<=0 .or. i+1>len(str)
              else
                 match = .true.
              end if
@@ -408,11 +406,12 @@ module regex_module
 
        ! Local variables
        character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: ccl_buf ! size of buffer for chars in all char-classes in the expression. */
-       integer :: loc,i,j,lenp
+       integer :: loc,i,j,lenp,lenc
        character(kind=RCK) :: c
 
        ! Initialize class
        call this%destroy()
+       ccl_buf = repeat(SPACE,MAX_CHAR_CLASS_LEN)
 
        if (DEBUG) print "('[regex] parsing pattern: <',a,'>')", trim(pattern)
 
@@ -487,6 +486,7 @@ module regex_module
 
                 ! Remove any escape characters
                 loc = index(pattern(i+1:),']')
+                lenc = loc-1
                 if (loc>0) then
                     ccl_buf = pattern(i+1:i+loc-1)
                     i = i+loc
@@ -512,8 +512,10 @@ module regex_module
                     end if
                 end if
 
-                ! Terminate string
-                this%pattern(j)%ccl = trim(ccl_buf)
+                ! Ensure there are no spaces
+
+                allocate(character(len=lenc,kind=RCK) :: this%pattern(j)%ccl)
+                this%pattern(j)%ccl = ccl_buf(:lenc)
 
          case default
 

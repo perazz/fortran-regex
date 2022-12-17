@@ -19,12 +19,13 @@ program tests
        call add_test(run_test1(valid,pattern,trim(str),length))
     end do
 
-    ! Test #2
-    call add_test(run_test2())
-
     ! Test #3
     call add_test(test_invalid())
     call add_test(test_main())
+    call add_test(test_bracket_space())
+
+    ! Test #2
+    call add_test(run_test2())
 
     if (nfailed<=0) then
         print *, 'SUCCESS! all tests passed.'
@@ -33,8 +34,6 @@ program tests
         print *, 'ERROR: ',nfailed,' tests failed, ',npassed,' passed.'
         stop 1
     end if
-
-
 
 
     contains
@@ -73,9 +72,26 @@ program tests
        idx = REGEX(string=text,pattern='foo*',length=ln);
 
        ! Prints "football"
+       success = idx>0; if (.not.success) return
        success = text(idx:idx+ln-1) == "foo"
 
     end function test_main
+
+    logical function test_bracket_space() result(success)
+       use regex_module
+       implicit none
+
+       integer :: idx,ln
+       character(*), parameter :: text = 'table football'
+
+       idx = REGEX(string=text,pattern='e[ ]f',length=ln);
+
+       ! Prints "football"
+       success = idx>0;  if (.not.success) return
+       success = text(idx:idx+ln-1) == "e f"
+
+    end function test_bracket_space
+
 
 
 

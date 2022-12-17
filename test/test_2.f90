@@ -506,7 +506,6 @@ module regex_test_2
 
        integer, parameter :: NTEST = 10
        integer :: bufsize,i,length,index,bufsizes(NTEST)
-       character(kind=RCK) :: saved
 
        print *
        print *, "Testing pathological pattern '.+nonexisting.+' to force worst-case asymptotic performance:"
