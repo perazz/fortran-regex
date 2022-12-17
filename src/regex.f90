@@ -74,6 +74,7 @@ module regex_module
 
         ! Single or multi-character pattern
         character(kind=RCK,len=MAX_CHAR_CLASS_LEN) :: ccl = repeat(' ',MAX_CHAR_CLASS_LEN)
+
         contains
 
           procedure :: print => print_pattern
@@ -619,7 +620,7 @@ module regex_module
 
    ! Iterative matching
    logical function matchpattern(pattern, text, matchlength) result(match)
-      class(regex_pattern), intent(in) :: pattern(:)
+      type(regex_pattern), intent(in) :: pattern(:)
       character(kind=RCK,len=*), intent(in) :: text
       integer, intent(inout) :: matchlength
 

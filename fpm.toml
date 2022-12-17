@@ -17,3 +17,9 @@ include-dir = "src"
 
 [install]
 library = true
+
+[[test]]
+name="regex_tests"
+source-dir="test"
+main="tests.f90"
+

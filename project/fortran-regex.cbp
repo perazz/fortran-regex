@@ -40,13 +40,13 @@
 			<Option weight="0" />
 		</Unit>
 		<Unit filename="../test/test_1.f90">
-			<Option weight="2" />
+			<Option weight="1" />
 		</Unit>
 		<Unit filename="../test/test_2.f90">
-			<Option weight="0" />
-		</Unit>
-		<Unit filename="../test/testdata.f90">
 			<Option weight="1" />
+		</Unit>
+		<Unit filename="../test/tests.f90">
+			<Option weight="2" />
 		</Unit>
 		<Extensions />
 	</Project>
