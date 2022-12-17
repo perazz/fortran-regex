@@ -42,7 +42,7 @@ program test_regex
    
    idx = REGEX(string=text,pattern='foo*',length=ln);
 
-   ! Prints "football"
+   ! Prints "foo"
    print *, text(idx:idx+ln-1)
    
 end program
@@ -65,7 +65,7 @@ program test_regex
    
    idx = REGEX(string=text,pattern=re,length=ln);
 
-   ! Prints "football"
+   ! Prints "foo"
    print *, text(idx:idx+ln-1)
    
 end program
