@@ -14,7 +14,7 @@ The main API is modelled around Fortran's `index` intrinsic function (which perf
    result = REGEX(string, pattern, length)
 ```
 
-# Object-oriented interface
+### Object-oriented interface
 
 One can also parse a regex pattern into a `type(regex_op)` structure, and use that instead of a string pattern. I have no idea why this should be useful, but at least it's given with a consistent interface
 
