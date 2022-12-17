@@ -1,0 +1,19 @@
+name        = "fortran-regex"
+author      = "Federico Perini"
+copyright   = "Copyright (c) 2022, Federico Perini" 
+license     = "MIT"
+description = "Fortran regex library"
+homepage    = "https://github.com/perazz/fortran-regex"
+keywords    = ["regex","regular expressions","strings"]
+
+[build]
+auto-executables = false
+auto-examples    = false
+auto-tests       = false
+
+[library]
+source-dir  = "src"
+include-dir = "src"
+
+[install]
+library = true
