@@ -24,6 +24,7 @@ program tests
 
     ! Test #3
     call add_test(test_invalid())
+    call add_test(test_main())
 
     if (nfailed<=0) then
         print *, 'SUCCESS! all tests passed.'
@@ -62,6 +63,19 @@ program tests
 
     end function test_invalid
 
+    logical function test_main() result(success)
+       use regex_module
+       implicit none
+
+       integer :: idx,ln
+       character(*), parameter :: text = 'table football'
+
+       idx = REGEX(string=text,pattern='foo*',length=ln);
+
+       ! Prints "football"
+       success = text(idx:idx+ln-1) == "foo"
+
+    end function test_main
 
 
 

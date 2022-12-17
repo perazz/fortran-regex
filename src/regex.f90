@@ -370,27 +370,27 @@ module regex_module
     end function matchplus
 
     ! Find matches of the given pattern in the string
-    integer function re_match(text, pattern, length) result(index)
+    integer function re_match(string, pattern, length) result(index)
        character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: text
+       character(*,kind=RCK), intent(in) :: string
        integer, intent(out) :: length
        type (regex_op) :: command
 
        command = parse_pattern(pattern)
-       index = re_matchp(text,command,length)
+       index = re_matchp(string,command,length)
 
     end function re_match
 
     ! Find matches of the given pattern in the string
-    integer function re_match_nolength(text, pattern) result(index)
+    integer function re_match_nolength(string, pattern) result(index)
        character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: text
+       character(*,kind=RCK), intent(in) :: string
 
        type (regex_op) :: command
        integer :: length
 
        command = parse_pattern(pattern)
-       index = re_matchp(text,command,length)
+       index = re_matchp(string,command,length)
 
     end function re_match_nolength
 
@@ -575,17 +575,17 @@ module regex_module
 
     end function pat_match
 
-    integer function re_matchp_nolength(text, pattern) result(index)
+    integer function re_matchp_nolength(string, pattern) result(index)
        type(regex_op), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: text
+       character(len=*,kind=RCK), intent(in) :: string
        integer :: matchlength
-       index = re_matchp(text, pattern, matchlength)
+       index = re_matchp(string, pattern, matchlength)
     end function re_matchp_nolength
 
 
-    integer function re_matchp(text, pattern, matchlength) result(index)
+    integer function re_matchp(string, pattern, matchlength) result(index)
        type(regex_op), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: text
+       character(len=*,kind=RCK), intent(in) :: string
        integer, intent(out) :: matchlength
 
        matchlength = 0
@@ -595,12 +595,12 @@ module regex_module
           if (pattern%pattern(1)%type == BEGIN_WITH) then
 
              ! String must begin with this pattern
-             index = merge(1,0,matchpattern(pattern%pattern(2:), text, matchlength))
+             index = merge(1,0,matchpattern(pattern%pattern(2:), string, matchlength))
 
           else
 
-             do index=1,len(text)
-                if (matchpattern(pattern%pattern,text(index:),matchlength)) return
+             do index=1,len(string)
+                if (matchpattern(pattern%pattern,string(index:),matchlength)) return
              end do
 
              index = 0
@@ -615,11 +615,6 @@ module regex_module
 
 
     end function re_matchp
-
-
-
-
-
 
 
    ! Iterative matching
