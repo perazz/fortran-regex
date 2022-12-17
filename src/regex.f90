@@ -16,6 +16,7 @@
 !
 ! *************************************************************************************************
 module regex_module
+    use iso_fortran_env, only: output_unit
     implicit none
     private
 
@@ -28,7 +29,9 @@ module regex_module
     logical, parameter, public :: RE_DOT_MATCHES_NEWLINE = .true. ! Define .false. if you DON'T want '.' to match '\r' + '\n'
     integer, parameter, public :: MAX_REGEXP_OBJECTS = 512        ! Max number of regex symbols in expression.
     integer, parameter, public :: MAX_CHAR_CLASS_LEN = 1024       ! Max length of character-class buffer in.
-    logical, parameter :: DEBUG = .true.
+
+    ! Turn on verbosity for debugging
+    logical, parameter :: DEBUG = .false.
 
     ! Supported patterns
     integer, parameter :: UNUSED         = 0
@@ -56,12 +59,12 @@ module regex_module
     character(kind=RCK,len=*), parameter :: lowercase="abcdefghijklmnopqrstuvwxyz"
     character(kind=RCK,len=*), parameter :: uppercase="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    character(kind=RCK), parameter :: UNDERSCORE = "_"
-    character(kind=RCK), parameter :: SPACE      = " "
-    character(kind=RCK), parameter :: DASH       = "-"
-    character(kind=RCK), parameter :: BACKSLASH0 = achar( 0,kind=RCK)  ! \0 or null character
-    character(kind=RCK), parameter :: NEWLINE    = achar(10,kind=RCK)  ! \n or line feed
-    character(kind=RCK), parameter :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
+    character(kind=RCK), parameter, public :: UNDERSCORE = "_"
+    character(kind=RCK), parameter, public :: SPACE      = " "
+    character(kind=RCK), parameter, public :: DASH       = "-"
+    character(kind=RCK), parameter, public :: CNULL      = achar( 0,kind=RCK)  ! \0 or null character
+    character(kind=RCK), parameter, public :: NEWLINE    = achar(10,kind=RCK)  ! \n or line feed
+    character(kind=RCK), parameter, public :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
 
 
     ! Regex pattern element
@@ -87,18 +90,20 @@ module regex_module
 
         contains
 
-           !procedure :: parse => parse_pattern
-           procedure :: write => write_pattern
+           procedure :: new     => new_from_pattern
+           procedure :: write   => write_pattern
            procedure :: nrules
            procedure :: destroy
-           final :: finalize
+           final     :: finalize
 
     end type regex_op
 
     ! Public interface
     interface regex
         module procedure re_match
+        module procedure re_match_nolength
         module procedure re_matchp
+        module procedure re_matchp_nolength
     end interface regex
 
     contains
@@ -123,12 +128,18 @@ module regex_module
 
     subroutine write_pattern(this,iunit)
         class(regex_op), intent(in) :: this
-        integer, intent(in) :: iunit
+        integer, optional, intent(in) :: iunit
 
-        integer :: i
+        integer :: i,u
+
+        if (present(iunit)) then
+            u = iunit
+        else
+            u = output_unit
+        end if
 
         do i=1,this%nrules()
-           write(iunit,'(a)') this%pattern(i)%print()
+           write(u,'(a)') this%pattern(i)%print()
         end do
 
     end subroutine write_pattern
@@ -243,11 +254,9 @@ module regex_module
 
              if (matchmetachar(c,str(i:))) then
                 match = .true.
-                print *, 'match meta, c=',c
                 return
              elseif (c==str(i:i) .and. (.not.ismetachar(c))) then
                 match = .true.
-                print *, 'match not meta, c=',c
                 return
              endif
 
@@ -257,7 +266,6 @@ module regex_module
              if (c==DASH) then
                 ! If this is a range, the character must be in this range, that we evaluate with the ASCII collating sequence
                 match = i<=0 .or. i+1>len_trim(str)
-                print *, 'c is dash! match=',match
              else
                 match = .true.
              end if
@@ -266,7 +274,7 @@ module regex_module
 
        end do loop
 
-       print *, 'charclass: no match on i=',i,' str=',trim(str),' c=',c
+       if (DEBUG) print *, 'charclass: no match on i=',i,' str=',trim(str),' c=',c
 
     end function matchcharclass
 
@@ -279,10 +287,8 @@ module regex_module
 
        if (p%type == UNUSED) then
           matchquestion = .true.
-          print *, 'unused -> match'
           return
        elseif (matchpattern(pattern, text, matchlength)) then
-          print *, 'matchquestion 2: length=',matchlength,' match=.true.'
           matchquestion = .true.
           return
        elseif (len(text)>0) then
@@ -305,7 +311,7 @@ module regex_module
 
        integer :: prelen,it
 
-       print *, 'match star, length=',matchlength,' it0=',it0,' lenm=',len(text)
+       if (DEBUG) print *, 'match star, length=',matchlength,' it0=',it0,' lenm=',len(text)
 
        if (len(text)<=0) then
           matchstar = .false.
@@ -343,7 +349,7 @@ module regex_module
 
        integer :: it
 
-       print *, 'matchplus'
+       if (DEBUG) print *, 'matching PLUS pattern'
 
        it = it0
        do while (it>0 .and. it<=len(text))
@@ -375,7 +381,28 @@ module regex_module
 
     end function re_match
 
+    ! Find matches of the given pattern in the string
+    integer function re_match_nolength(text, pattern) result(index)
+       character(*,kind=RCK), intent(in) :: pattern
+       character(*,kind=RCK), intent(in) :: text
+
+       type (regex_op) :: command
+       integer :: length
+
+       command = parse_pattern(pattern)
+       index = re_matchp(text,command,length)
+
+    end function re_match_nolength
+
     type(regex_op) function parse_pattern(pattern) result(this)
+       character(*,kind=RCK), intent(in) :: pattern
+
+       call new_from_pattern(this,pattern)
+
+    end function parse_pattern
+
+    subroutine new_from_pattern(this,pattern)
+       class(regex_op), intent(inout) :: this
        character(*,kind=RCK), intent(in) :: pattern
 
        ! Local variables
@@ -500,7 +527,7 @@ module regex_module
        ! Save number of patterns
        this%n = j-1
 
-    end function parse_pattern
+    end subroutine new_from_pattern
 
     function print_pattern(pattern) result(msg)
         class(regex_pattern), intent(in) :: pattern
@@ -541,9 +568,16 @@ module regex_module
 
     end function pat_match
 
+    integer function re_matchp_nolength(text, pattern) result(index)
+       type(regex_op), intent(in) :: pattern
+       character(len=*,kind=RCK), intent(in) :: text
+       integer :: matchlength
+       index = re_matchp(text, pattern, matchlength)
+    end function re_matchp_nolength
+
 
     integer function re_matchp(text, pattern, matchlength) result(index)
-       type(regex_op) :: pattern
+       type(regex_op), intent(in) :: pattern
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(out) :: matchlength
 
@@ -555,7 +589,6 @@ module regex_module
 
              ! String must begin with this pattern
              index = merge(1,0,matchpattern(pattern%pattern(2:), text, matchlength))
-             print *, 'begin with? index = ',index
 
           else
 
@@ -563,15 +596,11 @@ module regex_module
                 if (matchpattern(pattern%pattern,text(index:),matchlength)) return
              end do
 
-             print *, 'all patterns not matched, ',text
-
              index = 0
 
           end if
 
        else
-
-          !print *, 'pattern has no patterns'
 
           index = 0
 
@@ -600,13 +629,9 @@ module regex_module
 
       iterate: do while (ip<=size(pattern))
 
-         print *, 'trying pattern ',pattern(ip)%print(),' on character ',text(it:)
-
          if (pattern(ip)%type == UNUSED .or. pattern(ip+1)%type == QUESTIONMARK) then
 
-            print *, 'before matchquestion = ',match,' length=',matchlength
             match = matchquestion(pattern(ip),pattern(ip+2:),text(it:),matchlength)
-            print *, 'matchquestion = ',match,' length=',matchlength
             return
 
          elseif (pattern(ip+1)%type == STAR) then
@@ -621,7 +646,6 @@ module regex_module
 
          elseif (pattern(ip)%type == END_WITH .and. pattern(ip+1)%type == UNUSED) then
 
-            print *, 'end pattern, len(text)',len(text(it:))
 
             match = len(text(it:))<=1
             return
@@ -631,7 +655,8 @@ module regex_module
          matchlength = matchlength+1
 
          if (it>len(text)) exit iterate
-         print *, 'pat match with ip=',ip,' it=',it,' len=',len(text),' matchlenght=',matchlength
+
+         if (DEBUG) print "('[regex] matching ',i0,'-th pattern on chunk <',i0,':',i0,'>')", ip,it,len(text)
          if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
          ip = ip+1
          it = it+1
