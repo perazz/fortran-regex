@@ -21,6 +21,7 @@ module regex_module
     private
 
     public :: parse_pattern
+    public :: check_pattern
     public :: regex
 
     ! Character kind
@@ -107,6 +108,29 @@ module regex_module
     end interface regex
 
     contains
+
+    ! Check that a pattern matches the expected result
+    logical function check_pattern(string,pattern,expected) result(success)
+       character(len=*,kind=RCK), intent(in) :: string
+       character(len=*,kind=RCK), intent(in) :: pattern
+       character(len=*,kind=RCK), intent(in) :: expected
+
+       integer :: idx,length
+
+       idx = regex(string,pattern,length)
+
+       if (idx>0) then
+           success = length==len(expected)
+           if (success) success = string(idx:idx+length-1)==expected
+       else
+           success = len(expected)<=0
+       end if
+
+       if (DEBUG .and. .not.success) &
+         print "('[regex] test FAILED: text=',a,' pattern=',a,' index=',i0,' len=',i0)", &
+                                               string,pattern,idx,length
+
+    end function check_pattern
 
     ! Clean up a pattern
     elemental subroutine pat_destroy(this)
@@ -332,7 +356,6 @@ module regex_module
          it          = it-1
          if (matchstar) return
          matchlength = matchlength-1
-
        end do
 
        matchlength = prelen
@@ -586,24 +609,24 @@ module regex_module
     end function re_matchp_nolength
 
 
-    integer function re_matchp(string, pattern, matchlength) result(index)
+    integer function re_matchp(string, pattern, length) result(index)
        type(regex_op), intent(in) :: pattern
        character(len=*,kind=RCK), intent(in) :: string
-       integer, intent(out) :: matchlength
-
-       matchlength = 0
+       integer, intent(out) :: length
 
        if (pattern%n>0) then
 
           if (pattern%pattern(1)%type == BEGIN_WITH) then
 
              ! String must begin with this pattern
-             index = merge(1,0,matchpattern(pattern%pattern(2:), string, matchlength))
+             length = 0
+             index = merge(1,0,matchpattern(pattern%pattern(2:), string, length))
 
           else
 
              do index=1,len(string)
-                if (matchpattern(pattern%pattern,string(index:),matchlength)) return
+                length = 0
+                if (matchpattern(pattern%pattern,string(index:),length)) goto 1
              end do
 
              index = 0
@@ -616,6 +639,13 @@ module regex_module
 
        end if
 
+       1 if (DEBUG) then
+          if (index==0) then
+             print "('[regex] end: pattern not found. ')"
+          else
+             print "('[regex] end: pattern found at ',i0,': ',a)", index,string(index:)
+          end if
+       end if
 
     end function re_matchp
 
@@ -651,15 +681,16 @@ module regex_module
 
          elseif (pattern(ip)%type == END_WITH .and. pattern(ip+1)%type == UNUSED) then
 
+            if (DEBUG .and. len(text(it:))>0) print *, '[regex] at end: remaining = ',text(it:),' len=',matchlength
 
-            match = len(text(it:))<=1
+            match = it>len(text)
             return
 
          end if
 
-         matchlength = matchlength+1
-
          if (it>len(text)) exit iterate
+
+         matchlength = matchlength+1
 
          if (DEBUG) print "('[regex] matching ',i0,'-th pattern on chunk <',i0,':',i0,'>')", ip,it,len(text)
          if (.not. pat_match(pattern(ip), text(it:it))) exit iterate

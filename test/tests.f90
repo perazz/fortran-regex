@@ -23,6 +23,7 @@ program tests
     call add_test(test_invalid())
     call add_test(test_main())
     call add_test(test_bracket_space())
+    call add_test(test_end_anchor())
 
     ! Test #2
     call add_test(run_test2())
@@ -66,14 +67,10 @@ program tests
        use regex_module
        implicit none
 
-       integer :: idx,ln
        character(*), parameter :: text = 'table football'
 
-       idx = REGEX(string=text,pattern='foo*',length=ln);
-
-       ! Prints "football"
-       success = idx>0; if (.not.success) return
-       success = text(idx:idx+ln-1) == "foo"
+       success = check_pattern(text,'foo*',expected="foo")
+       if (.not.success) return
 
     end function test_main
 
@@ -81,24 +78,30 @@ program tests
        use regex_module
        implicit none
 
-       integer :: idx,ln
        character(*), parameter :: text = 'table football'
 
-       idx = REGEX(string=text,pattern='e[ ]f',length=ln);
+       success = check_pattern(text,'e[ ]f',expected="e f")
+       if (.not.success) return
 
-       ! Prints "football"
-       success = idx>0;  if (.not.success) return
-       success = text(idx:idx+ln-1) == "e f"
+       success = check_pattern(text,'e[ ]+f',expected="e f")
+       if (.not.success) return
 
-       idx = REGEX(string=text,pattern='e[ ]+f',length=ln);
-
-       ! Prints "football"
-       success = idx>0;  if (.not.success) return
-       success = text(idx:idx+ln-1) == "e f"
 
     end function test_bracket_space
 
+    logical function test_end_anchor() result(success)
+       use regex_module
+       implicit none
 
+       character(*), parameter :: text = 'table football'
+
+       success = check_pattern(text,'ll$',expected="ll")
+       if (.not.success) return
+
+       success = check_pattern(text,'l$',expected="l")
+       if (.not.success) return
+
+    end function test_end_anchor
 
 
 end program tests
