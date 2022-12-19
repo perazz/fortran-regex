@@ -2,24 +2,29 @@
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
 	<ActiveTarget name="Debug" />
-	<File name="../test/test_1.f90" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="../test/test_2.f90" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="7118" topLine="0" />
+			<Cursor1 position="41154" topLine="438" />
 		</Cursor>
 	</File>
-	<File name="../test/test_2.f90" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="../test/test_1.f90" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="41946" topLine="403" />
+			<Cursor1 position="7211" topLine="73" />
 		</Cursor>
 	</File>
-	<File name="../test/tests.f90" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="../src/regex.f90" open="1" top="1" tabpos="7" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1889" topLine="49" />
+			<Cursor1 position="9309" topLine="209" />
 		</Cursor>
 	</File>
-	<File name="../src/regex.f90" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="1" zoom_2="0">
+	<File name="../test/tests.f90" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="21101" topLine="593" />
+			<Cursor1 position="933" topLine="2" />
+		</Cursor>
+	</File>
+	<File name="../test/test_m_regex.f90" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="6092" topLine="27" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

@@ -66,6 +66,7 @@ module regex_module
     character(kind=RCK), parameter, public :: CNULL      = achar( 0,kind=RCK)  ! \0 or null character
     character(kind=RCK), parameter, public :: NEWLINE    = achar(10,kind=RCK)  ! \n or line feed
     character(kind=RCK), parameter, public :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
+    character(kind=RCK), parameter, public :: TAB        = achar( 9,kind=RCK)  ! \t or tabulation character
 
 
     ! Regex pattern element
@@ -126,9 +127,11 @@ module regex_module
            success = len(expected)<=0
        end if
 
-       if (DEBUG .and. .not.success) &
+       if (DEBUG .and. .not.success) then
          print "('[regex] test FAILED: text=',a,' pattern=',a,' index=',i0,' len=',i0)", &
                                                string,pattern,idx,length
+         stop 1
+       endif
 
     end function check_pattern
 
@@ -240,8 +243,8 @@ module regex_module
        character(kind=RCK), intent(in) :: c
        character(kind=RCK,len=*), intent(in) :: str ! the range pattern
 
-       matchrange = len(str)>=3 &
-                    .and. c /= DASH &
+       matchrange = len(str)>=3; if (.not.matchrange) return
+       matchrange = c /= DASH &
                     .and. str(1:1) /= DASH &
                     .and. str(2:2) == DASH &
                     .and. iachar(c)>=iachar(str(1:1)) &
@@ -287,8 +290,10 @@ module regex_module
 
              ! Character match
              if (c==DASH) then
-                ! If this is a range, the character must be in this range, that we evaluate with the ASCII collating sequence
-                match = i<=0 .or. i+1>len(str)
+
+                ! Dash is a single character only if it does not have characters before/after
+                match = i==1 .or. i+1>len(str)
+
              else
                 match = .true.
              end if
@@ -620,7 +625,7 @@ module regex_module
 
              ! String must begin with this pattern
              length = 0
-             index = merge(1,0,matchpattern(pattern%pattern(2:), string, length))
+             index = merge(1,0,matchpattern(pattern%pattern(2:), string, length) .and. len(string)>0)
 
           else
 
@@ -635,12 +640,15 @@ module regex_module
 
        else
 
-          index = 0
+          ! On an empty/invalid pattern, return -1
+          index = -1
 
        end if
 
        1 if (DEBUG) then
-          if (index==0) then
+          if (index==-1) then
+             print "('[regex] end: empty/invalid regex pattern. ')"
+          elseif (index==0) then
              print "('[regex] end: pattern not found. ')"
           else
              print "('[regex] end: pattern found at ',i0,': ',a)", index,string(index:)

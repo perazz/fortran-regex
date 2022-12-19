@@ -2,6 +2,7 @@ program tests
     use regex_module
     use regex_test_1
     use regex_test_2
+    use regex_test_m_regex
     use iso_fortran_env, only: output_unit
     implicit none
 
@@ -19,6 +20,12 @@ program tests
        call add_test(run_test1(valid,pattern,trim(str),length))
     end do
 
+    ! Test m_regex
+    do i=1,size(testMdata,2)
+        call get_m_test(i,valid,pattern,str)
+        call add_test(run_m_test(valid,trim(pattern),trim(str)))
+    end do
+
     ! Test #3
     call add_test(test_invalid())
     call add_test(test_main())
@@ -26,13 +33,13 @@ program tests
     call add_test(test_end_anchor())
 
     ! Test #2
-    call add_test(run_test2())
+    !call add_test(run_test2())
 
     if (nfailed<=0) then
-        print *, 'SUCCESS! all tests passed.'
+        print "(*(a,:,i0))", 'SUCCESS! all ',npassed,' tests passed.'
         stop 0
     else
-        print *, 'ERROR: ',nfailed,' tests failed, ',npassed,' passed.'
+        print "(*(a,:,i0))", 'ERROR: ',nfailed,' tests failed, ',npassed,' passed.'
         stop 1
     end if
 
