@@ -14,7 +14,9 @@ The main API is modelled around Fortran's `index` intrinsic function (which perf
    result = REGEX(string, pattern, length)
 ```
 
-If no substrings with the given patterns are found, or the pattern is invalid, `result = 0`. Otherwise, if the pattern was found `result > 0` equal to the leftmost location inside the string where the pattern can be found. 
+- If the pattern command is invalid, `result = -1`.
+- If no substrings with the given pattern are found, with a valid pattern `result = 0`. This is also returned if the string has zero length, and that is an acceptable answer for the input pattern.
+- Otherwise, if the pattern was found `result > 0` equal to the leftmost location inside the string where the pattern can be found. `length` returns the number of consecutive characters that match this pattern 
 
 ### Object-oriented interface
 
