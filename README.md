@@ -14,6 +14,8 @@ The main API is modelled around Fortran's `index` intrinsic function (which perf
    result = REGEX(string, pattern, length)
 ```
 
+If no substrings with the given patterns are found, or the pattern is invalid, `result = 0`. Otherwise, if the pattern was found `result > 0` equal to the leftmost location inside the string where the pattern can be found. 
+
 ### Object-oriented interface
 
 One can also parse a regex pattern into a `type(regex_op)` structure, and use that instead of a string pattern. I have no idea why this should be useful, but at least it's given with a consistent interface
@@ -38,8 +40,6 @@ program test_regex
    integer :: idx,ln
    character(*), parameter :: text = 'table football'
    
-   
-   
    idx = REGEX(string=text,pattern='foo*',length=ln);
 
    ! Prints "foo"
@@ -50,7 +50,6 @@ end program
 
 
 ```fortran
-
 ! Demonstrate use of object-oriented interface
 program test_regex
    use regex_module
@@ -69,14 +68,13 @@ program test_regex
    print *, text(idx:idx+ln-1)
    
 end program
-   
 ```
 
 ### To do list
 
  - [ ] Add a `BACK` optional keyword to return the last instance instead of the first.
  - [ ] Option to return ALL instances as an array, instead of the first/last one only.
- - [ ] Replace fixed-size static storage with allocatable character strings (slower?)
+ - [X] Replace fixed-size static storage with allocatable character strings (slower?)
  
 ### Reporting problems
 
