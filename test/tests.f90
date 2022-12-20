@@ -31,9 +31,10 @@ program tests
     call add_test(test_main())
     call add_test(test_bracket_space())
     call add_test(test_end_anchor())
+    call add_test(test_end_anchor2())
 
     ! Test #2
-    !call add_test(run_test2())
+    call add_test(run_test2())
 
     if (nfailed<=0) then
         print "(*(a,:,i0))", 'SUCCESS! all ',npassed,' tests passed.'
@@ -110,5 +111,15 @@ program tests
 
     end function test_end_anchor
 
+    logical function test_end_anchor2() result(success)
+       use regex_module
+       implicit none
+
+       character(*), parameter :: text = 'Avida Dollar$'
+
+       success = check_pattern(text,'[A-Z][a-z]+$',expected="")
+       if (.not.success) return
+
+    end function test_end_anchor2
 
 end program tests
