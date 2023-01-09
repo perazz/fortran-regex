@@ -81,7 +81,7 @@ end program
 
 ### To do list
 
- - [ ] Add a `BACK` optional keyword to return the last instance instead of the first.
+ - [X] Add a `BACK` optional keyword to return the last instance instead of the first.
  - [ ] Option to return ALL instances as an array, instead of the first/last one only.
  - [X] Replace fixed-size static storage with allocatable character strings (slower?)
  
