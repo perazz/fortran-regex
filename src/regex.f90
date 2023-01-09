@@ -69,7 +69,7 @@ module regex_module
     character(kind=RCK), parameter, public :: TAB        = achar( 9,kind=RCK)  ! \t or tabulation character
 
     ! Regex pattern element
-    type, public :: regex_pattern
+    type, public :: regex_token
 
         integer :: type = UNUSED
 
@@ -81,13 +81,13 @@ module regex_module
           procedure :: destroy => pat_destroy
           procedure :: match => pat_match
 
-    end type regex_pattern
+    end type regex_token
 
-    type, public :: regex_op
+    type, public :: regex_pattern
 
         integer :: n = 0
 
-        type(regex_pattern), dimension(MAX_REGEXP_OBJECTS) :: pattern
+        type(regex_token), dimension(MAX_REGEXP_OBJECTS) :: pattern
 
         contains
 
@@ -97,14 +97,18 @@ module regex_module
            procedure :: destroy
            final     :: finalize
 
-    end type regex_op
+    end type regex_pattern
 
     ! Public interface
     interface regex
         module procedure re_match
+        module procedure re_match_noback
         module procedure re_match_nolength
+        module procedure re_match_nolength_noback
         module procedure re_matchp
+        module procedure re_matchp_noback
         module procedure re_matchp_nolength
+        module procedure re_matchp_nolength_noback
     end interface regex
 
     contains
@@ -136,7 +140,7 @@ module regex_module
 
     ! Clean up a pattern
     elemental subroutine pat_destroy(this)
-       class(regex_pattern), intent(inout) :: this
+       class(regex_token), intent(inout) :: this
        integer :: ierr
        this%type = UNUSED
        deallocate(this%ccl,stat=ierr)
@@ -144,7 +148,7 @@ module regex_module
 
     ! Number of rules in the current pattern
     elemental integer function nrules(this)
-       class(regex_op), intent(in) :: this
+       class(regex_pattern), intent(in) :: this
        integer :: i
        nrules = 0
        do i=1,MAX_REGEXP_OBJECTS
@@ -154,7 +158,7 @@ module regex_module
     end function nrules
 
     subroutine write_pattern(this,iunit)
-        class(regex_op), intent(in) :: this
+        class(regex_pattern), intent(in) :: this
         integer, optional, intent(in) :: iunit
 
         integer :: i,u
@@ -172,7 +176,7 @@ module regex_module
     end subroutine write_pattern
 
     elemental subroutine destroy(this)
-        class(regex_op), intent(inout) :: this
+        class(regex_pattern), intent(inout) :: this
         integer :: i
         do i=1,MAX_REGEXP_OBJECTS
             call this%pattern(i)%destroy()
@@ -180,7 +184,7 @@ module regex_module
     end subroutine destroy
 
     subroutine finalize(this)
-        type(regex_op), intent(inout) :: this
+        type(regex_pattern), intent(inout) :: this
         integer :: i
         do i=1,MAX_REGEXP_OBJECTS
             call this%pattern(i)%destroy()
@@ -306,7 +310,7 @@ module regex_module
     end function matchcharclass
 
     logical function matchquestion(p, pattern, text, matchlength)
-       type(regex_pattern), intent(in) :: p, pattern(:)
+       type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(inout) :: matchlength
 
@@ -331,7 +335,7 @@ module regex_module
     end function matchquestion
 
     logical function matchstar(p, pattern, text, it0, matchlength)
-       type(regex_pattern), intent(in) :: p, pattern(:)
+       type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(in)    :: it0 ! starting point
        integer, intent(inout) :: matchlength
@@ -368,7 +372,7 @@ module regex_module
     end function matchstar
 
     logical function matchplus(p, pattern, text, it0, matchlength)
-       type(regex_pattern), intent(in) :: p, pattern(:)
+       type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(in) :: it0
        integer, intent(inout) :: matchlength
@@ -396,31 +400,58 @@ module regex_module
     end function matchplus
 
     ! Find matches of the given pattern in the string
-    integer function re_match(string, pattern, length) result(index)
+    integer function re_match(string, pattern, length, back) result(index)
        character(*,kind=RCK), intent(in) :: pattern
        character(*,kind=RCK), intent(in) :: string
        integer, intent(out) :: length
-       type (regex_op) :: command
+       logical, intent(in)  :: back
+       type (regex_pattern) :: command
 
        command = parse_pattern(pattern)
-       index = re_matchp(string,command,length)
+       index = re_matchp(string,command,length,back)
 
     end function re_match
 
     ! Find matches of the given pattern in the string
-    integer function re_match_nolength(string, pattern) result(index)
+    integer function re_match_noback(string, pattern, length) result(index)
        character(*,kind=RCK), intent(in) :: pattern
        character(*,kind=RCK), intent(in) :: string
+       integer, intent(out) :: length
+       type (regex_pattern) :: command
 
-       type (regex_op) :: command
+       command = parse_pattern(pattern)
+       index = re_matchp(string,command,length,.false.)
+
+    end function re_match_noback
+
+    ! Find matches of the given pattern in the string
+    integer function re_match_nolength(string, pattern, back) result(index)
+       character(*,kind=RCK), intent(in) :: pattern
+       character(*,kind=RCK), intent(in) :: string
+       logical              , intent(in) :: back
+
+       type (regex_pattern) :: command
        integer :: length
 
        command = parse_pattern(pattern)
-       index = re_matchp(string,command,length)
+       index = re_matchp(string,command,length,back)
 
     end function re_match_nolength
 
-    type(regex_op) function parse_pattern(pattern) result(this)
+    ! Find matches of the given pattern in the string
+    integer function re_match_nolength_noback(string, pattern) result(index)
+       character(*,kind=RCK), intent(in) :: pattern
+       character(*,kind=RCK), intent(in) :: string
+
+       type (regex_pattern) :: command
+       integer :: length
+
+       command = parse_pattern(pattern)
+       index = re_matchp(string,command,length,.false.)
+
+    end function re_match_nolength_noback
+
+    type(regex_pattern) function parse_pattern(pattern) result(this)
        character(*,kind=RCK), intent(in) :: pattern
 
        call new_from_pattern(this,pattern)
@@ -428,7 +459,7 @@ module regex_module
     end function parse_pattern
 
     subroutine new_from_pattern(this,pattern)
-       class(regex_op), intent(inout) :: this
+       class(regex_pattern), intent(inout) :: this
        character(*,kind=RCK), intent(in) :: pattern
 
        ! Local variables
@@ -455,12 +486,12 @@ module regex_module
          select case (c)
 
             ! Meta-characters are single-character patterns
-            case ('^'); this%pattern(j) = regex_pattern(BEGIN_WITH,c)
-            case ('$'); this%pattern(j) = regex_pattern(END_WITH,c)
-            case ('.'); this%pattern(j) = regex_pattern(DOT,c)
-            case ('*'); this%pattern(j) = regex_pattern(STAR,c)
-            case ('+'); this%pattern(j) = regex_pattern(PLUS,c)
-            case ('?'); this%pattern(j) = regex_pattern(QUESTIONMARK,c)
+            case ('^'); this%pattern(j) = regex_token(BEGIN_WITH,c)
+            case ('$'); this%pattern(j) = regex_token(END_WITH,c)
+            case ('.'); this%pattern(j) = regex_token(DOT,c)
+            case ('*'); this%pattern(j) = regex_token(STAR,c)
+            case ('+'); this%pattern(j) = regex_token(PLUS,c)
+            case ('?'); this%pattern(j) = regex_token(QUESTIONMARK,c)
 
             ! Escaped character-classes (\s, \w, ...)
             case ('\');
@@ -472,21 +503,21 @@ module regex_module
                     i = i+1;
 
                     select case (pattern(i:i))
-                       case ('d'); this%pattern(j) = regex_pattern(DIGIT,'d')
-                       case ('D'); this%pattern(j) = regex_pattern(NOT_DIGIT,'D')
-                       case ('w'); this%pattern(j) = regex_pattern(ALPHA,'w')
-                       case ('W'); this%pattern(j) = regex_pattern(NOT_ALPHA,'W')
-                       case ('s'); this%pattern(j) = regex_pattern(WHITESPACE,'s')
-                       case ('S'); this%pattern(j) = regex_pattern(NOT_WHITESPACE,'S')
+                       case ('d'); this%pattern(j) = regex_token(DIGIT,'d')
+                       case ('D'); this%pattern(j) = regex_token(NOT_DIGIT,'D')
+                       case ('w'); this%pattern(j) = regex_token(ALPHA,'w')
+                       case ('W'); this%pattern(j) = regex_token(NOT_ALPHA,'W')
+                       case ('s'); this%pattern(j) = regex_token(WHITESPACE,'s')
+                       case ('S'); this%pattern(j) = regex_token(NOT_WHITESPACE,'S')
                        case default;
                             ! Escaped character: "." or "$"
-                            this%pattern(j) = regex_pattern(ATCHAR,pattern(i:i))
+                            this%pattern(j) = regex_token(ATCHAR,pattern(i:i))
                     end select
 
                 else
 
                     ! This is the first character of a sequence *and* the end of rht pattern. store as CHAR
-                    this%pattern(j) = regex_pattern(ATCHAR,c)
+                    this%pattern(j) = regex_token(ATCHAR,c)
 
                 endif
 
@@ -547,7 +578,7 @@ module regex_module
          case default
 
              ! Single character
-             this%pattern(j) = regex_pattern(ATCHAR,c)
+             this%pattern(j) = regex_token(ATCHAR,c)
 
          end select
 
@@ -567,7 +598,7 @@ module regex_module
     end subroutine new_from_pattern
 
     function print_pattern(pattern) result(msg)
-        class(regex_pattern), intent(in) :: pattern
+        class(regex_token), intent(in) :: pattern
         character(:,kind=RCK), allocatable :: msg
 
         character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: buffer
@@ -585,7 +616,7 @@ module regex_module
 
     ! Match a single pattern at the g
     logical function pat_match(p, c) result(match)
-       class(regex_pattern), intent(in) :: p
+       class(regex_token), intent(in) :: p
        character(kind=RCK), intent(in) :: c
 
        select case (p%type)
@@ -605,18 +636,36 @@ module regex_module
 
     end function pat_match
 
-    integer function re_matchp_nolength(string, pattern) result(index)
-       type(regex_op), intent(in) :: pattern
+    integer function re_matchp_nolength(string, pattern, back) result(index)
+       type(regex_pattern), intent(in) :: pattern
        character(len=*,kind=RCK), intent(in) :: string
+       logical, intent(in) :: back
        integer :: matchlength
-       index = re_matchp(string, pattern, matchlength)
+       index = re_matchp(string, pattern, matchlength, back)
     end function re_matchp_nolength
 
+    integer function re_matchp_nolength_noback(string, pattern) result(index)
+       type(regex_pattern), intent(in) :: pattern
+       character(len=*,kind=RCK), intent(in) :: string
+       integer :: matchlength
+       index = re_matchp(string, pattern, matchlength, .false.)
+    end function re_matchp_nolength_noback
 
-    integer function re_matchp(string, pattern, length) result(index)
-       type(regex_op), intent(in) :: pattern
+    integer function re_matchp_noback(string, pattern, length) result(index)
+       type(regex_pattern), intent(in) :: pattern
        character(len=*,kind=RCK), intent(in) :: string
        integer, intent(out) :: length
+       index = re_matchp(string, pattern, length, .false.)
+    end function re_matchp_noback
+
+
+    integer function re_matchp(string, pattern, length, back) result(index)
+       type(regex_pattern), intent(in) :: pattern
+       character(len=*,kind=RCK), intent(in) :: string
+       integer, intent(out) :: length
+       logical, intent(in) :: back
+
+       integer :: first,last,step
 
        if (pattern%n>0) then
 
@@ -628,7 +677,11 @@ module regex_module
 
           else
 
-             do index=1,len(string)
+             first  = merge(1,len(string),.not.back)
+             last   = merge(1,len(string),back)
+             step   = sign(1,last-first)
+
+             do index=first,last,step
                 length = 0
                 if (matchpattern(pattern%pattern,string(index:),length)) goto 1
              end do
@@ -659,7 +712,7 @@ module regex_module
 
    ! Iterative matching
    logical function matchpattern(pattern, text, matchlength) result(match)
-      type(regex_pattern), intent(in) :: pattern(:)
+      type(regex_token), intent(in) :: pattern(:)
       character(kind=RCK,len=*), intent(in) :: text
       integer, intent(inout) :: matchlength
 

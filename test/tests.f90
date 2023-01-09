@@ -59,7 +59,7 @@ program tests
     ! Test two bug patterns reported by @DavidKorczynski in https://github.com/kokke/tiny-regex-c/issues/44
     logical function test_invalid() result(success)
 
-       type(regex_op) :: re
+       type(regex_pattern) :: re
 
        ! Test 1: inverted set without a closing ']'
        re = parse_pattern("\\\x01[^\\\xff][^")
