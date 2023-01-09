@@ -7,16 +7,23 @@ Fortran-regex is a Modern Fortran port of the [tiny-regex-c](https://github.com/
 The main API is modelled around Fortran's `index` intrinsic function (which performs a simple search for a substring within a string): 
 
 ```fortran
-   ! Simple regex
-   result = REGEX(string, pattern)
-   
-   ! Regex with output matched pattern length
-   result = REGEX(string, pattern, length)
+   ! Perform regex on a character string
+   result = REGEX(string, pattern [, length] [, [back]])
 ```
-
 - If the pattern command is invalid, `result = -1`.
 - If no substrings with the given pattern are found, with a valid pattern `result = 0`. This is also returned if the string has zero length, and that is an acceptable answer for the input pattern.
-- Otherwise, if the pattern was found `result > 0` equal to the leftmost location inside the string where the pattern can be found. `length` returns the number of consecutive characters that match this pattern 
+- Otherwise, if the pattern was found `result > 0` equal to the leftmost location inside the string where the pattern can be found. If the `back` keyword is provided and `.true.`, the location of the rightmost occurrence is returned instead. `length` returns the number of consecutive characters that match this pattern 
+
+### Arguments
+
+| Argument | Type | Intent | Description |
+| --- | --- | --- | --- |
+| `string` | `character(*)` | `in` | The input text |
+| `pattern` | `character(*)` | `in` | The regex command |
+| `length` | `integer` | `out` (optional) | Length of the matched pattern |
+| `back` | `logical` | `in` (optional) | If the BACK argument is present and `.true.`, the return value is the start of the last occurrence rather than the first. |
+
+
 
 ### Object-oriented interface
 
