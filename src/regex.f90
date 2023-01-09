@@ -68,7 +68,6 @@ module regex_module
     character(kind=RCK), parameter, public :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
     character(kind=RCK), parameter, public :: TAB        = achar( 9,kind=RCK)  ! \t or tabulation character
 
-
     ! Regex pattern element
     type, public :: regex_pattern
 

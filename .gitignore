@@ -1,2 +1,5 @@
 *.mod
 project/*.mod
+project/regex_module.mod
+project/regex_test_1.mod
+*.mod

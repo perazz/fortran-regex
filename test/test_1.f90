@@ -85,7 +85,7 @@ module regex_test_1
        integer,      intent(in) :: correct_len
 
        integer :: idx,length
-       type(regex_op) :: re
+       type(regex_pattern) :: re
 
        print "('regex test: pattern=',a,' string=',a,'....')",trim(pattern),trim(string)
 
