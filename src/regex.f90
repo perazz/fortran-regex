@@ -309,7 +309,7 @@ module regex_module
 
     end function matchcharclass
 
-    logical function matchquestion(p, pattern, text, matchlength)
+    recursive logical function matchquestion(p, pattern, text, matchlength)
        type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(inout) :: matchlength
@@ -334,7 +334,7 @@ module regex_module
 
     end function matchquestion
 
-    logical function matchstar(p, pattern, text, it0, matchlength)
+    recursive logical function matchstar(p, pattern, text, it0, matchlength)
        type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(in)    :: it0 ! starting point
@@ -371,7 +371,7 @@ module regex_module
 
     end function matchstar
 
-    logical function matchplus(p, pattern, text, it0, matchlength)
+    recursive logical function matchplus(p, pattern, text, it0, matchlength)
        type(regex_token), intent(in) :: p, pattern(:)
        character(len=*,kind=RCK), intent(in) :: text
        integer, intent(in) :: it0
@@ -615,7 +615,7 @@ module regex_module
     end function print_pattern
 
     ! Match a single pattern at the g
-    logical function pat_match(p, c) result(match)
+    recursive logical function pat_match(p, c) result(match)
        class(regex_token), intent(in) :: p
        character(kind=RCK), intent(in) :: c
 
