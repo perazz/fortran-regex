@@ -711,7 +711,7 @@ module regex_module
 
 
    ! Iterative matching
-   logical function matchpattern(pattern, text, matchlength) result(match)
+   recursive logical function matchpattern(pattern, text, matchlength) result(match)
       type(regex_token), intent(in) :: pattern(:)
       character(kind=RCK,len=*), intent(in) :: text
       integer, intent(inout) :: matchlength
