@@ -11,6 +11,7 @@ keywords    = ["regex","regular expressions","strings"]
 auto-executables = false
 auto-examples    = false
 auto-tests       = true
+module-naming    = "regex"
 
 [library]
 source-dir  = "src"
