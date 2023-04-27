@@ -111,7 +111,23 @@ module regex_module
         module procedure re_matchp_nolength_noback
     end interface regex
 
+    ! Override default constructor for ifort bug
+    interface regex_token
+        module procedure pat_from_char
+    end interface regex_token
+
+
     contains
+
+    ! Construct a regex pattern from a single character
+    elemental type(regex_token) function pat_from_char(type,ccl) result(this)
+       integer, intent(in) :: type
+       character(kind=RCK), intent(in) :: ccl
+       call pat_destroy(this)
+       this%type = type
+       allocate(character(len=1,kind=RCK) :: this%ccl)
+       this%ccl(1:1) = ccl
+    end function pat_from_char
 
     ! Check that a pattern matches the expected result
     logical function check_pattern(string,pattern,expected) result(success)

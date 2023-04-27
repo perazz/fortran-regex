@@ -32,6 +32,7 @@ program tests
     call add_test(test_bracket_space())
     call add_test(test_end_anchor())
     call add_test(test_end_anchor2())
+    call add_test(test_read_version())
 
     ! Test #2
     call add_test(run_test2())
@@ -121,5 +122,13 @@ program tests
        if (.not.success) return
 
     end function test_end_anchor2
+
+    logical function test_read_version() result(success)
+       character(*), parameter :: &
+       text = 'Intel(R) MPI Library 2021.8 for Linux*Copyright Intel Corporation.ifort version 2021.8.0'
+
+       success = check_pattern(text,'\d+\.\d+\.\d+',expected="2021.8.0")
+
+    end function test_read_version
 
 end program tests
