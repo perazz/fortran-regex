@@ -1,7 +1,7 @@
 name        = "fortran-regex"
 author      = "Federico Perini"
 copyright   = "Copyright (c) 2022-2023, Federico Perini" 
-version     = "1.1.0"
+version     = "1.1.2"
 license     = "MIT"
 description = "Fortran regex library"
 homepage    = "https://github.com/perazz/fortran-regex"

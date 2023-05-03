@@ -1,7 +1,7 @@
 # depslib dependency file v1.0
-1671441766 source:/Users/federico/code/fortran-regex/src/regex.f90
+1673295739 source:/Users/federico/code/fortran-regex/src/regex.f90
 
-1671276031 source:/Users/federico/code/fortran-regex/test/test_1.f90
+1673295130 source:/Users/federico/code/fortran-regex/test/test_1.f90
 
 1671272275 source:/Users/federico/code/fortran-regex/test/testdata.f90
 
@@ -13,9 +13,9 @@
 
 1671311161 source:/Users/federico/code/fortran-regex/test/test_2.f90
 
-1671351911 source:/Users/federico/code/fortran-regex/test/tests.f90
+1673295146 source:/Users/federico/code/fortran-regex/test/tests.f90
 
-1671442112 source:/Users/federico/code/fortran-regex/test/test_m_regex.f90
+1673295146 source:/Users/federico/code/fortran-regex/test/test_m_regex.f90
 
 1671525497 source:i:\fortran-regex\test\test_2.f90
 
