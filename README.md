@@ -27,7 +27,7 @@ The main API is modelled around Fortran's `index` intrinsic function (which perf
 
 ### Object-oriented interface
 
-One can also parse a regex pattern into a `type(regex_op)` structure, and use that instead of a string pattern. I have no idea why this should be useful, but at least it's given with a consistent interface
+One can also parse a regex pattern into a `type(regex_pattern)` structure, and use that instead of a string pattern. I have no idea why this should be useful, but at least it's given with a consistent interface
 
 ### Overview
 
@@ -66,7 +66,7 @@ program test_regex
    
    integer :: idx,ln
    character(*), parameter :: text = 'table football'
-   type(regex_op) :: re
+   type(regex_pattern) :: re
    
    ! Parse pattern into a regex structure
    re = parse_pattern('foo*')
